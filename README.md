@@ -1,6 +1,6 @@
 # ePaper Photo Frame for Home Assistant
 
-A private Home Assistant App repository for a battery-powered, 13.3-inch
+A Home Assistant App repository for a battery-powered, 13.3-inch
 Spectra 6 photo frame. The App reads a public shared Google Photos album,
 caches metadata and images, converts photos to the six-colour display palette,
 and serves the next frame to an ESP32-based display controller.
@@ -17,8 +17,7 @@ not committed to this repository.
 See [epaper_photo_frame/DOCS.md](epaper_photo_frame/DOCS.md) for installation
 and configuration.
 
-The intended private repository is
-`https://github.com/michaelkurath/epaper-photo-frame-ha`. Keep it private as
-source control and deploy the App through Samba's `local_apps` share. Direct
-App-store repository URLs are best suited to repositories that Home Assistant
-can fetch without an interactive GitHub login.
+Add the public repository
+`https://github.com/michaelkurath/epaper-photo-frame-ha` directly to the Home
+Assistant App store. For local development, deployment through Samba's
+`local_apps` share remains available as an alternative.
