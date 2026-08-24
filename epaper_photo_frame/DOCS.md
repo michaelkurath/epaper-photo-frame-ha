@@ -1,25 +1,19 @@
 # ePaper Photo Frame
 
-## Installation from a private GitHub repository
+## Installation from the public GitHub repository
 
-1. Create the private repository
-   `https://github.com/michaelkurath/epaper-photo-frame-ha` and push the complete
-   contents of this package to it.
-2. In Home Assistant install the official **Samba share** App under
-   **Settings → Apps → Install app**.
-3. In the Samba configuration set a separate username and password and ensure
-   the `local_apps` share is enabled. Save and start Samba.
-4. In Windows Explorer open `\\homeassistant.local` or `\\HOME_ASSISTANT_IP`,
-   sign in with the Samba credentials, and open `local_apps`.
-5. Copy the complete `epaper_photo_frame` directory into `local_apps`. The
-   result in Windows must be
-   `local_apps\\epaper_photo_frame\\config.yaml`—avoid an accidental second
-   nested `epaper_photo_frame` folder.
-6. In **Settings → Apps → App store**, refresh/check for updates under the local
-   Apps section, then install **ePaper Photo Frame**.
+1. In Home Assistant open **Settings → Apps → App store**.
+2. Open the repository management menu and add
+   `https://github.com/michaelkurath/epaper-photo-frame-ha`.
+3. Refresh the App store if necessary, select **ePaper Photo Frame**, and
+   install it.
+4. Configure the required options below, save them, and start the App.
 
-The included `scripts/deploy-local.sh` can perform step 5 when `local_apps` is
-mounted as a normal directory on a development computer.
+For local development, the complete `epaper_photo_frame` directory can instead
+be copied to Samba's `local_apps` share. The resulting path must be
+`local_apps\\epaper_photo_frame\\config.yaml`; avoid an accidental second
+nested `epaper_photo_frame` folder. The included `scripts/deploy-local.sh` can
+perform this copy when `local_apps` is mounted as a normal directory.
 
 ## Required options
 
