@@ -1,0 +1,31 @@
+name: Bootstrap project
+
+on:
+  push:
+    paths:
+      - 'epaper-photo-frame-ha-v0.1.0.zip'
+      - '.github/workflows/bootstrap.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract project
+        run: |
+          tmpdir="$(mktemp -d)"
+          unzip -q epaper-photo-frame-ha-v0.1.0.zip -d "$tmpdir"
+          cp -a "$tmpdir/epaper-photo-frame-ha/." .
+          rm -f epaper-photo-frame-ha-v0.1.0.zip
+          rm -f .github/workflows/bootstrap.yml
+      - name: Commit project files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Initial Home Assistant ePaper Photo Frame app"
+          git push
