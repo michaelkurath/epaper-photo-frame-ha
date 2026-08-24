@@ -19,9 +19,9 @@ jobs:
         run: |
           tmpdir="$(mktemp -d)"
           unzip -q epaper-photo-frame-ha-v0.1.0.zip -d "$tmpdir"
+          rm -rf "$tmpdir/epaper-photo-frame-ha/.github"
           cp -a "$tmpdir/epaper-photo-frame-ha/." .
           rm -f epaper-photo-frame-ha-v0.1.0.zip
-          rm -f .github/workflows/bootstrap.yml
       - name: Commit project files
         run: |
           git config user.name "github-actions[bot]"
