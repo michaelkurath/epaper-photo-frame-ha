@@ -1,0 +1,31 @@
+configuration:
+  album_url:
+    name: Geteiltes Google-Photos-Album
+    description: Öffentlicher Freigabelink; es wird kein Google-Login verwendet.
+  api_token:
+    name: Geräte-API-Token
+    description: Mindestens 16 zufällige Zeichen für den ePaper-Controller.
+  album_poll_hours:
+    name: Album-Prüfintervall
+    description: Stunden zwischen Prüfungen auf neue Fotos.
+  frame_interval_hours:
+    name: Bildwechsel-Intervall
+    description: Empfohlenes Deep-Sleep-Intervall des Display-Controllers.
+  fit_mode:
+    name: Bildanpassung
+    description: Füllend zuschneiden oder vollständig mit Rand einpassen.
+  orientation:
+    name: Display-Ausrichtung
+    description: Hochformat ist 1200 x 1600; Querformat 1600 x 1200.
+  dither:
+    name: Dithering
+    description: Floyd-Steinberg-Dithering für die Sechsfarben-Palette.
+  night_start:
+    name: Nachtpause beginnt
+    description: Lokale Uhrzeit, ab der das letzte Bild stehen bleibt.
+  night_end:
+    name: Nachtpause endet
+    description: Lokale Uhrzeit, ab der Bilder wieder gewechselt werden dürfen.
+network:
+  8080/tcp: Token-geschützte API für den ePaper-Controller
+

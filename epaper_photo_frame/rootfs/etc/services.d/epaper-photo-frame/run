@@ -1,0 +1,13 @@
+#!/command/with-contenv bashio
+set -e
+
+export PYTHONPATH="/opt/epaper-photo-frame"
+export EPAPER_OPTIONS_FILE="/data/options.json"
+export EPAPER_DATA_DIR="/data"
+
+exec /opt/venv/bin/uvicorn frame_app.main:app \
+  --host 127.0.0.1 \
+  --port 8000 \
+  --proxy-headers \
+  --forwarded-allow-ips="127.0.0.1"
+

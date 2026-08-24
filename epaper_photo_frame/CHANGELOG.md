@@ -1,0 +1,10 @@
+# Changelog
+
+## 0.1.0 - 2026-08-24
+
+- Initial Home Assistant App scaffold.
+- Public Google Photos adapter with paginated RPC extraction.
+- SQLite catalogue, new-photo-first selection, and no immediate repeats.
+- Six-colour PNG and packed 4-bit RAW output.
+- Ingress dashboard plus isolated token-protected device API.
+

@@ -1,0 +1,27 @@
+#include <tunables/global>
+
+profile epaper_photo_frame flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+
+  file,
+  network inet stream,
+  network inet6 stream,
+  signal (send) set=(kill,term,int,hup,cont),
+
+  /init ix,
+  /bin/** ix,
+  /usr/bin/** ix,
+  /usr/sbin/nginx ix,
+  /opt/venv/bin/** ix,
+  /opt/epaper-photo-frame/** r,
+  /run/{,**} rwk,
+  /etc/nginx/{,**} r,
+  /etc/services.d/{,**} rwix,
+  /package/** ix,
+  /command/** ix,
+  /data/{,**} rwk,
+  /tmp/{,**} rwk,
+  /dev/null rw,
+  /dev/urandom r,
+}
+

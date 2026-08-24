@@ -1,0 +1,31 @@
+configuration:
+  album_url:
+    name: Shared Google Photos album URL
+    description: Public share URL; no Google login is used.
+  api_token:
+    name: Device API token
+    description: At least 16 random characters used by the ePaper controller.
+  album_poll_hours:
+    name: Album refresh interval
+    description: Hours between checks for new album photos.
+  frame_interval_hours:
+    name: Frame interval
+    description: Recommended deep-sleep interval for the display controller.
+  fit_mode:
+    name: Photo fit
+    description: Crop to fill or contain the full photo with a border.
+  orientation:
+    name: Display orientation
+    description: Portrait is 1200 by 1600; landscape is 1600 by 1200.
+  dither:
+    name: Dithering
+    description: Use Floyd-Steinberg dithering for the six-colour palette.
+  night_start:
+    name: Night pause starts
+    description: Local time after which the controller should keep the last image.
+  night_end:
+    name: Night pause ends
+    description: Local time at which normal image changes may resume.
+network:
+  8080/tcp: Token-protected API for the ePaper controller
+
