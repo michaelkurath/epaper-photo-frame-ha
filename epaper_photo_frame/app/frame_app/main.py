@@ -61,7 +61,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="ePaper Photo Frame",
-    version="0.1.0",
+    version="0.1.1",
     lifespan=lifespan,
     docs_url=None,
     redoc_url=None,
@@ -156,4 +156,3 @@ async def device_next_png(current: FrameService = Depends(_device_auth)) -> File
 @app.post("/api/device/next.raw", response_class=FileResponse)
 async def device_next_raw(current: FrameService = Depends(_device_auth)) -> FileResponse:
     return await _frame_response(current, advance=True, raw=True)
-
