@@ -26,3 +26,22 @@ Add the public repository
 `https://github.com/michaelkurath/epaper-photo-frame-ha` directly to the Home
 Assistant App store. For local development, deployment through Samba's
 `local_apps` share remains available as an alternative.
+
+## Security
+
+The controller API on port `8080` currently uses HTTP with a bearer token and
+is intended only for a trusted local network. Do not forward this port through
+a router or expose it to the internet. See [SECURITY.md](SECURITY.md) for the
+supported-version policy and private vulnerability-reporting instructions.
+
+## License and third-party software
+
+Original project code is licensed under the [MIT License](LICENSE), copyright
+2026 Michael Kurath. Direct dependencies, build-time firmware libraries, and
+the bundled OpenCV face-detector data retain their own licenses; see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Home Assistant, Google Photos, Seeed Studio, Spectra, Arduino, ESP32, and other
+names are used only to identify compatible products and services. This
+independent project is not endorsed by or affiliated with their respective
+owners.
