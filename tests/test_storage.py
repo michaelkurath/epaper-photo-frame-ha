@@ -76,6 +76,13 @@ class StorageTests(unittest.TestCase):
         self.assertIsNotNone(selected)
         self.assertEqual(selected.id, "b")
 
+    def test_focus_point_is_stored_per_photo(self) -> None:
+        self.catalogue.set_focus("photo-a", 0.25, 0.75)
+        self.assertEqual(self.catalogue.get_focus("photo-a"), (0.25, 0.75))
+        self.assertIsNone(self.catalogue.get_focus("photo-b"))
+        self.catalogue.clear_focus("photo-a")
+        self.assertIsNone(self.catalogue.get_focus("photo-a"))
+
 
 if __name__ == "__main__":
     unittest.main()
