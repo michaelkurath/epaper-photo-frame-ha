@@ -1,5 +1,4 @@
 #!/command/with-contenv bashio
 set -e
 
-exec nginx -g "daemon off;"
-
+exec nginx -e /dev/stderr -g "daemon off;"
