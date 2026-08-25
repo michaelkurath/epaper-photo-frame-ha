@@ -1,7 +1,10 @@
 from io import BytesIO
 from pathlib import Path
+import sys
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 from PIL import Image
 
@@ -59,6 +62,22 @@ class ImagePipelineTests(unittest.TestCase):
         fitted = pipeline._fit(image)
         self.assertEqual(fitted.getpixel((50, 0)), SPECTRA6_PALETTE[0])
         self.assertEqual(fitted.getpixel((50, 159)), SPECTRA6_PALETTE[0])
+
+    def test_alpine_opencv_without_data_module_falls_back_safely(self) -> None:
+        class EmptyClassifier:
+            def __init__(self, _: str) -> None:
+                pass
+
+            @staticmethod
+            def empty() -> bool:
+                return True
+
+        fake_cv2 = SimpleNamespace(CascadeClassifier=EmptyClassifier)
+        with patch.dict(sys.modules, {"cv2": fake_cv2}):
+            faces = ImagePipeline._detect_faces_opencv(
+                Image.new("RGB", (100, 100), "white")
+            )
+        self.assertEqual(faces, [])
 
 
 if __name__ == "__main__":
