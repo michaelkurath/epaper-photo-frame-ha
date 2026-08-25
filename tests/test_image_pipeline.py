@@ -8,7 +8,11 @@ from unittest.mock import patch
 
 from PIL import Image
 
-from frame_app.image_pipeline import ImagePipeline, SPECTRA6_PALETTE
+from frame_app.image_pipeline import (
+    ImagePipeline,
+    SMART_TARGET_COVERAGE,
+    SPECTRA6_PALETTE,
+)
 
 
 def source_image() -> bytes:
@@ -62,6 +66,26 @@ class ImagePipelineTests(unittest.TestCase):
         fitted = pipeline._fit(image)
         self.assertEqual(fitted.getpixel((50, 0)), SPECTRA6_PALETTE[0])
         self.assertEqual(fitted.getpixel((50, 159)), SPECTRA6_PALETTE[0])
+
+    def test_smart_crop_keeps_full_image_when_screen_usage_is_high(self) -> None:
+        image = Image.new("RGB", (100, 110), "blue")
+        pipeline = ImagePipeline((100, 100), fit_mode="smart", dither=False)
+        fitted = pipeline._fit(image)
+        self.assertEqual(fitted.getpixel((0, 50)), SPECTRA6_PALETTE[0])
+        self.assertNotEqual(fitted.getpixel((50, 50)), SPECTRA6_PALETTE[0])
+
+    def test_smart_crop_leaves_small_borders_instead_of_full_zoom(self) -> None:
+        image = Image.new("RGB", (200, 100), "blue")
+        pipeline = ImagePipeline(
+            (100, 100),
+            fit_mode="smart",
+            dither=False,
+            face_detector=lambda _: [],
+        )
+        fitted = pipeline._fit(image)
+        self.assertEqual(SMART_TARGET_COVERAGE, 0.85)
+        self.assertEqual(fitted.getpixel((50, 0)), SPECTRA6_PALETTE[0])
+        self.assertNotEqual(fitted.getpixel((50, 50)), SPECTRA6_PALETTE[0])
 
     def test_alpine_opencv_without_data_module_falls_back_safely(self) -> None:
         class EmptyClassifier:
