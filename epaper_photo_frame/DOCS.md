@@ -73,6 +73,22 @@ Automatic mode advances a virtual clock by the real frame interval while only
 waiting 5, 10, or 30 seconds in the browser. It therefore tests multi-cycle and
 night-window behaviour without waiting several hours.
 
+## EE02 firmware 0.1.0
+
+The repository now contains a first physical controller implementation under
+`firmware/ee02_photo_frame`. It targets the XIAO ePaper Display Board EE02,
+XIAO ESP32-S3 Plus, and the 13.3-inch 1200 x 1600 Spectra 6 T133A01 panel.
+
+The controller uses the same API as the simulator. It validates protocol
+version, dimensions, palette, frame headers, RAW length, and every packed
+palette index before calling the physical display update. It automatically
+selects portrait or landscape rotation from the dimensions supplied by the
+App. Server time and the configured night window control timer deep sleep.
+
+The first USB test should be performed with deep sleep disabled. The full
+Arduino preparation, wiring precautions, secrets file and commissioning steps
+are documented in `firmware/ee02_photo_frame/README.md`.
+
 ## Operational behaviour
 
 - Album metadata refreshes at startup and then at the configured interval.
