@@ -17,6 +17,7 @@ def device_config_payload(
     return {
         "protocol_version": DEVICE_PROTOCOL_VERSION,
         "server_time": server_time if server_time is not None else int(time.time()),
+        "display_model": settings.display_model,
         "width": width,
         "height": height,
         "palette": list(PALETTE_NAMES),
