@@ -26,14 +26,19 @@
     .device { margin-top: 18px; }
     .device h2 { margin-top: 0; font-size: 1.2rem; }
     .result { padding: 12px; border-radius: 8px; background: #101820; color: #a8bac6; white-space: pre-wrap; overflow-wrap: anywhere; }
-    #devicePreview { display: none; max-width: 420px; margin-top: 14px; }
+    .device-settings { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .device-grid { margin: 12px 0; }
+    .device-grid .value { font-size: 1rem; }
+    #deviceCanvas { display: none; width: 100%; max-width: 420px; height: auto; margin-top: 14px; background: white; border-radius: 10px; image-rendering: pixelated; }
+    #deviceLog { max-height: 190px; overflow-y: auto; margin-top: 12px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .78rem; }
+    #stopSimulator { background: #a64545; color: white; }
     .focus-wrap { position: relative; }
     #preview { cursor: crosshair; }
     #focusMarker { display: none; position: absolute; width: 20px; height: 20px; border: 3px solid #ffcc33; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 0 2px #101820; pointer-events: none; }
     .compact { padding: 8px 11px; font-size: .85rem; }
     #message { min-height: 1.5em; color: #a8bac6; }
     .error { color: #ff8b8b !important; }
-    @media (max-width: 680px) { .preview { grid-template-columns: 1fr; } }
+    @media (max-width: 680px) { .preview { grid-template-columns: 1fr; } .device-settings { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -79,16 +84,37 @@
     </div>
   </section>
   <section class="card device">
-    <h2>Display-Controller simulieren</h2>
-    <p class="label">Testet dieselbe API, die später der ESP32 verwendet. Der Token wird nicht gespeichert.</p>
-    <p><input id="deviceToken" type="password" autocomplete="off" placeholder="Geräte-API-Token"></p>
-    <div class="controls">
-      <button class="secondary device-action" data-device-action="config">Verbindung testen</button>
-      <button class="secondary device-action" data-device-action="current">Aktuellen Frame laden</button>
-      <button class="secondary device-action" data-device-action="next">Nächsten Frame laden</button>
+    <h2>Display-Controller-Simulator</h2>
+    <p class="label">Simuliert Aufwachen, Nachtpause, RAW-Download, Datenprüfung, Display-Refresh, Statusmeldung und Deep Sleep. Der Token wird nicht gespeichert.</p>
+    <div class="device-settings">
+      <label>Geräte-API-Token
+        <input id="deviceToken" type="password" autocomplete="off" placeholder="Geräte-API-Token">
+      </label>
+      <label>Beschleunigung
+        <select id="simulatorSpeed">
+          <option value="5">1 Zyklus / 5 Sekunden</option>
+          <option value="10" selected>1 Zyklus / 10 Sekunden</option>
+          <option value="30">1 Zyklus / 30 Sekunden</option>
+        </select>
+      </label>
     </div>
-    <div id="deviceResult" class="result">Noch kein Gerätetest durchgeführt.</div>
-    <img id="devicePreview" alt="Vom Geräte-Endpunkt geladener Frame">
+    <div class="controls">
+      <button class="secondary device-action" id="connectDevice">Verbindung testen</button>
+      <button class="secondary device-action" id="runCycle">Einen Zyklus ausführen</button>
+      <button class="device-action" id="startSimulator">Automatik starten</button>
+      <button class="device-action" id="stopSimulator" disabled>Stoppen</button>
+    </div>
+    <div class="grid device-grid">
+      <div><div class="label">Controllerstatus</div><div class="value" id="simState">Bereit</div></div>
+      <div><div class="label">Virtuelle Zeit</div><div class="value" id="simTime">–</div></div>
+      <div><div class="label">Frame-ID</div><div class="value" id="simFrame">–</div></div>
+      <div><div class="label">RAW-Daten</div><div class="value" id="simBytes">–</div></div>
+      <div><div class="label">Zyklusdauer</div><div class="value" id="simDuration">–</div></div>
+      <div><div class="label">Nächster Zyklus</div><div class="value" id="simNext">manuell</div></div>
+    </div>
+    <div id="deviceResult" class="result">Noch kein Controller-Zyklus durchgeführt.</div>
+    <canvas id="deviceCanvas" aria-label="Aus RAW-Daten rekonstruierter Display-Frame"></canvas>
+    <div id="deviceLog" class="result">Protokoll ist leer.</div>
   </section>
 </main>
 <script>
@@ -184,39 +210,173 @@
     } catch (error) { byId('message').textContent = error.message; byId('message').className = 'error'; }
     finally { byId('clearFocus').disabled = false; }
   });
-  const deviceHeaders = () => ({Authorization: 'Bearer ' + byId('deviceToken').value.trim()});
-  const setDeviceBusy = busy => document.querySelectorAll('.device-action').forEach(item => item.disabled = busy);
-  document.querySelectorAll('.device-action').forEach(button => button.addEventListener('click', async () => {
-    const token = byId('deviceToken').value.trim();
-    if (!token) { byId('deviceResult').textContent = 'Bitte zuerst den Geräte-API-Token eingeben.'; return; }
+  const simulator = {
+    config: null, running: false, busy: false, timer: null, virtualTime: null,
+    hasFrame: false, frameId: null, logs: []
+  };
+  const deviceHeaders = (json = false) => ({
+    Authorization: 'Bearer ' + byId('deviceToken').value.trim(),
+    ...(json ? {'Content-Type': 'application/json'} : {})
+  });
+  const requireToken = () => {
+    if (!byId('deviceToken').value.trim()) throw new Error('Bitte zuerst den Geräte-API-Token eingeben.');
+  };
+  const simLog = message => {
+    const stamp = new Date().toLocaleTimeString();
+    simulator.logs.unshift(`${stamp}  ${message}`);
+    simulator.logs = simulator.logs.slice(0, 30);
+    byId('deviceLog').textContent = simulator.logs.join('\n');
+  };
+  const setSimState = state => { byId('simState').textContent = state; };
+  const setDeviceBusy = busy => {
+    simulator.busy = busy;
+    byId('connectDevice').disabled = busy || simulator.running;
+    byId('runCycle').disabled = busy || simulator.running;
+    byId('startSimulator').disabled = busy || simulator.running;
+    byId('stopSimulator').disabled = !simulator.running;
+  };
+  const parseClock = value => {
+    const [hours, minutes] = value.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+  const isNightTime = (date, config) => {
+    const now = date.getHours() * 60 + date.getMinutes();
+    const start = parseClock(config.night_start);
+    const end = parseClock(config.night_end);
+    if (start === end) return false;
+    return start < end ? now >= start && now < end : now >= start || now < end;
+  };
+  async function loadDeviceConfig() {
+    requireToken();
+    const response = await fetch(api('api/device/config'), {headers: deviceHeaders()});
+    if (!response.ok) throw new Error(response.status === 401 ? 'Token ungültig.' : await responseError(response, 'Gerätekonfiguration nicht erreichbar'));
+    const config = await response.json();
+    if (config.protocol_version !== 1) throw new Error(`Nicht unterstützte Protokollversion ${config.protocol_version}.`);
+    if (!Array.isArray(config.palette_rgb) || config.palette_rgb.length !== 6) throw new Error('Ungültige Farbpalette in der Gerätekonfiguration.');
+    simulator.config = config;
+    simulator.virtualTime ??= new Date(config.server_time * 1000);
+    byId('simTime').textContent = simulator.virtualTime.toLocaleString();
+    return config;
+  }
+  async function reportDevice(status, fields = {}) {
+    const response = await fetch(api('api/device/report'), {
+      method: 'POST', headers: deviceHeaders(true), body: JSON.stringify({
+        device_id: 'browser-simulator', firmware_version: 'web-simulator-0.4.0',
+        status, battery_percent: 100, wifi_rssi: -55, ...fields
+      })
+    });
+    if (!response.ok) throw new Error(await responseError(response, 'Statusmeldung wurde abgelehnt'));
+  }
+  function drawRawFrame(buffer, config) {
+    const bytes = new Uint8Array(buffer);
+    if (bytes.length !== config.raw_size_bytes) {
+      throw new Error(`RAW-Grösse ungültig: ${bytes.length} statt ${config.raw_size_bytes} Bytes.`);
+    }
+    const canvas = byId('deviceCanvas');
+    canvas.width = config.width;
+    canvas.height = config.height;
+    const context = canvas.getContext('2d', {alpha: false});
+    const image = context.createImageData(config.width, config.height);
+    const output = image.data;
+    let pixel = 0;
+    for (const packed of bytes) {
+      for (const paletteIndex of [packed >> 4, packed & 0x0f]) {
+        if (paletteIndex >= config.palette_rgb.length) throw new Error(`Ungültiger Farbindex ${paletteIndex} in RAW-Daten.`);
+        const colour = config.palette_rgb[paletteIndex];
+        const offset = pixel * 4;
+        output[offset] = colour[0]; output[offset + 1] = colour[1];
+        output[offset + 2] = colour[2]; output[offset + 3] = 255;
+        pixel += 1;
+      }
+    }
+    context.putImageData(image, 0, 0);
+    canvas.style.display = 'block';
+  }
+  function advanceVirtualTime() {
+    simulator.virtualTime = new Date(simulator.virtualTime.getTime() + simulator.config.frame_interval_seconds * 1000);
+    byId('simTime').textContent = simulator.virtualTime.toLocaleString();
+  }
+  async function runControllerCycle() {
+    if (simulator.busy) return;
     setDeviceBusy(true);
-    byId('deviceResult').textContent = 'Geräteanfrage läuft …';
+    const started = performance.now();
     try {
-      if (button.dataset.deviceAction === 'config') {
-        const response = await fetch(api('api/device/config'), {headers: deviceHeaders()});
-        if (!response.ok) throw new Error(response.status === 401 ? 'Token ungültig.' : 'Gerätekonfiguration nicht erreichbar.');
-        const data = await response.json();
-        byId('deviceResult').textContent = `Verbindung erfolgreich\nAuflösung: ${data.width} × ${data.height}\nPalette: ${data.palette.join(', ')}\nWechselintervall: ${data.frame_interval_seconds} s`;
+      const config = await loadDeviceConfig();
+      setSimState('Aufgewacht'); simLog('Controller aufgewacht; Konfiguration geladen.');
+      await reportDevice('awake', {frame_id: simulator.frameId});
+      if (isNightTime(simulator.virtualTime, config)) {
+        setSimState('Nachtpause');
+        byId('deviceResult').textContent = `Nachtfenster ${config.night_start}–${config.night_end}: kein Display-Refresh, direkt zurück in Deep Sleep.`;
+        simLog('Nachtfenster aktiv; Frame-Download übersprungen.');
+        await reportDevice('sleeping', {frame_id: simulator.frameId, detail: 'night window'});
       } else {
-        const action = button.dataset.deviceAction;
-        const response = await fetch(api(`api/device/${action}.png`), {
-          method: action === 'next' ? 'POST' : 'GET', headers: deviceHeaders()
+        setSimState('RAW-Download');
+        const useNext = simulator.hasFrame;
+        const response = await fetch(api(`api/device/${useNext ? 'next' : 'current'}.raw`), {
+          method: useNext ? 'POST' : 'GET', headers: deviceHeaders()
         });
-        if (!response.ok) throw new Error(response.status === 401 ? 'Token ungültig.' : 'Frame konnte nicht geladen werden.');
-        const image = await response.blob();
-        const oldUrl = byId('devicePreview').dataset.objectUrl;
-        if (oldUrl) URL.revokeObjectURL(oldUrl);
-        const objectUrl = URL.createObjectURL(image);
-        byId('devicePreview').dataset.objectUrl = objectUrl;
-        byId('devicePreview').src = objectUrl;
-        byId('devicePreview').style.display = 'block';
-        byId('deviceResult').textContent = `Frame erfolgreich geladen\nFrame-ID: ${response.headers.get('X-Frame-Id') || '–'}\nDateigrösse: ${(image.size / 1024).toFixed(1)} KiB\nFormat: ${image.type}`;
+        if (!response.ok) throw new Error(response.status === 401 ? 'Token ungültig.' : await responseError(response, 'RAW-Frame konnte nicht geladen werden'));
+        const buffer = await response.arrayBuffer();
+        const frameId = response.headers.get('X-Frame-Id') || 'unbekannt';
+        setSimState('Datenprüfung');
+        drawRawFrame(buffer, config);
+        const duration = Math.round(performance.now() - started);
+        simulator.hasFrame = true; simulator.frameId = frameId;
+        byId('simFrame').textContent = frameId;
+        byId('simBytes').textContent = `${buffer.byteLength.toLocaleString()} B`;
+        byId('simDuration').textContent = `${duration} ms`;
+        setSimState('Display aktualisiert');
+        simLog(`${useNext ? 'Nächster' : 'Aktueller'} RAW-Frame ${frameId} validiert und angezeigt.`);
+        await reportDevice('displayed', {frame_id: frameId, cycle_ms: duration});
+        await reportDevice('sleeping', {frame_id: frameId, cycle_ms: duration, detail: 'deep sleep'});
+        byId('deviceResult').textContent = `Zyklus erfolgreich\n${config.width} × ${config.height} Pixel\n${buffer.byteLength.toLocaleString()} Bytes geprüft\nStatus an Home Assistant gemeldet\nDeep Sleep bis zum nächsten Abruf`;
+        setSimState('Deep Sleep');
         await refresh();
       }
+      advanceVirtualTime();
     } catch (error) {
+      setSimState('Fehler');
       byId('deviceResult').textContent = error.message;
-    } finally { setDeviceBusy(false); }
-  }));
+      simLog(`FEHLER: ${error.message}`);
+      try { await reportDevice('error', {frame_id: simulator.frameId, detail: error.message.slice(0, 256)}); } catch (_) { /* Original error is more useful. */ }
+      if (simulator.running) stopSimulator();
+    } finally {
+      setDeviceBusy(false);
+      if (simulator.running) scheduleNextCycle();
+    }
+  }
+  function scheduleNextCycle() {
+    clearTimeout(simulator.timer);
+    const seconds = Number(byId('simulatorSpeed').value);
+    byId('simNext').textContent = `in ${seconds} s`;
+    simulator.timer = setTimeout(() => { byId('simNext').textContent = 'jetzt'; runControllerCycle(); }, seconds * 1000);
+  }
+  function stopSimulator() {
+    simulator.running = false;
+    clearTimeout(simulator.timer);
+    simulator.timer = null;
+    byId('simNext').textContent = 'manuell';
+    setDeviceBusy(simulator.busy);
+    simLog('Automatische Simulation gestoppt.');
+  }
+  byId('connectDevice').addEventListener('click', async () => {
+    setDeviceBusy(true);
+    try {
+      const config = await loadDeviceConfig();
+      byId('deviceResult').textContent = `Verbindung erfolgreich\nProtokoll: ${config.protocol_version}\nAuflösung: ${config.width} × ${config.height}\nRAW-Grösse: ${config.raw_size_bytes.toLocaleString()} Bytes\nNachtpause: ${config.night_start}–${config.night_end}`;
+      setSimState('Verbunden'); simLog('Gerätekonfiguration erfolgreich geprüft.');
+    } catch (error) { byId('deviceResult').textContent = error.message; setSimState('Fehler'); }
+    finally { setDeviceBusy(false); }
+  });
+  byId('runCycle').addEventListener('click', runControllerCycle);
+  byId('startSimulator').addEventListener('click', () => {
+    try { requireToken(); } catch (error) { byId('deviceResult').textContent = error.message; return; }
+    simulator.running = true;
+    setDeviceBusy(false);
+    simLog('Automatische, beschleunigte Simulation gestartet.');
+    runControllerCycle();
+  });
+  byId('stopSimulator').addEventListener('click', stopSimulator);
   refresh().catch(error => { byId('message').textContent = error.message; byId('message').className = 'error'; });
 </script>
 </body>
