@@ -45,6 +45,23 @@ class ImagePipelineTests(unittest.TestCase):
             pipeline.png_to_raw(png, raw)
             self.assertEqual(raw.stat().st_size, 120 * 160 // 2)
 
+    def test_dither_strength_produces_distinct_quality_levels(self) -> None:
+        outputs = []
+        for strength in (0, 50, 100):
+            pipeline = ImagePipeline(
+                (120, 160),
+                fit_mode="contain",
+                dither=strength > 0,
+                dither_strength=strength,
+            )
+            outputs.append(pipeline.quantize(source_image()).convert("RGB").tobytes())
+        self.assertNotEqual(outputs[0], outputs[1])
+        self.assertNotEqual(outputs[1], outputs[2])
+
+    def test_rejects_invalid_dither_strength(self) -> None:
+        with self.assertRaises(ValueError):
+            ImagePipeline((100, 100), dither_strength=101)
+
     def test_smart_crop_uses_manual_focus(self) -> None:
         image = Image.new("RGB", (200, 100), "red")
         for x in range(100, 200):

@@ -30,15 +30,19 @@ class ServiceTests(unittest.TestCase):
             )
             _, png, raw = service._paths("photo-a")
             expected = hashlib.sha256(
-                f"{RENDER_CACHE_VERSION}:photo-a:portrait:smart:15:1:auto".encode("utf-8")
+                f"{RENDER_CACHE_VERSION}:photo-a:portrait:smart:15:1:50:auto".encode("utf-8")
             ).hexdigest()
             self.assertEqual(png.name, f"{expected}.png")
             self.assertEqual(raw.name, f"{expected}.raw")
 
-            asyncio.run(service.set_display_options("landscape", "smart", 25))
+            asyncio.run(service.set_display_options("landscape", "smart", 25, 75))
             self.assertEqual(service.settings.smart_unused_percent, 25)
+            self.assertEqual(service.settings.dither_strength, 75)
             self.assertEqual(
                 service.catalogue.get_state("display_smart_unused_percent"), "25"
+            )
+            self.assertEqual(
+                service.catalogue.get_state("display_dither_strength"), "75"
             )
 
 
