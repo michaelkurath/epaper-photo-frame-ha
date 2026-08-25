@@ -114,7 +114,7 @@ class ImagePipeline:
     def _detail_focus(image: Image.Image) -> tuple[float, float]:
         sample = ImageOps.grayscale(image).resize((64, 64), Image.Resampling.LANCZOS)
         edges = sample.filter(ImageFilter.FIND_EDGES)
-        values = list(edges.getdata())
+        values = list(edges.get_flattened_data())
         total = sum(values)
         if total <= 0:
             return (0.5, 0.5)
