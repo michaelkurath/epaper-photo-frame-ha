@@ -17,6 +17,9 @@ configuration:
   orientation:
     name: Display orientation
     description: Portrait is 1200 by 1600; landscape is 1600 by 1200.
+  smart_unused_percent:
+    name: Allowed unused display area
+    description: Percentage that Smart Crop may leave empty as a border.
   dither:
     name: Dithering
     description: Use Floyd-Steinberg dithering for the six-colour palette.
@@ -28,4 +31,3 @@ configuration:
     description: Local time at which normal image changes may resume.
 network:
   8080/tcp: Token-protected API for the ePaper controller
-

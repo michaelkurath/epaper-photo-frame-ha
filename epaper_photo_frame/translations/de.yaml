@@ -17,6 +17,9 @@ configuration:
   orientation:
     name: Display-Ausrichtung
     description: Hochformat ist 1200 x 1600; Querformat 1600 x 1200.
+  smart_unused_percent:
+    name: Erlaubte freie Displayfläche
+    description: Prozentwert, der bei intelligentem Ausschnitt als Rand frei bleiben darf.
   dither:
     name: Dithering
     description: Floyd-Steinberg-Dithering für die Sechsfarben-Palette.
@@ -28,4 +31,3 @@ configuration:
     description: Lokale Uhrzeit, ab der Bilder wieder gewechselt werden dürfen.
 network:
   8080/tcp: Token-geschützte API für den ePaper-Controller
-
