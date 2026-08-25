@@ -40,6 +40,17 @@ class Catalogue:
                     key TEXT PRIMARY KEY,
                     value TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS devices (
+                    id TEXT PRIMARY KEY,
+                    firmware_version TEXT,
+                    status TEXT NOT NULL,
+                    frame_id TEXT,
+                    battery_percent INTEGER,
+                    wifi_rssi INTEGER,
+                    cycle_ms INTEGER,
+                    detail TEXT,
+                    last_seen_at INTEGER NOT NULL
+                );
                 """
             )
 
@@ -112,6 +123,71 @@ class Catalogue:
         except (TypeError, ValueError):
             return None
         return (x, y) if 0.0 <= x <= 1.0 and 0.0 <= y <= 1.0 else None
+
+    def record_device_report(
+        self,
+        *,
+        device_id: str,
+        firmware_version: str | None,
+        status: str,
+        frame_id: str | None,
+        battery_percent: int | None,
+        wifi_rssi: int | None,
+        cycle_ms: int | None,
+        detail: str | None,
+        now: int | None = None,
+    ) -> dict[str, object]:
+        timestamp = now or int(time.time())
+        with self._connect() as db:
+            db.execute(
+                """
+                INSERT INTO devices (
+                    id, firmware_version, status, frame_id, battery_percent,
+                    wifi_rssi, cycle_ms, detail, last_seen_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    firmware_version = excluded.firmware_version,
+                    status = excluded.status,
+                    frame_id = excluded.frame_id,
+                    battery_percent = excluded.battery_percent,
+                    wifi_rssi = excluded.wifi_rssi,
+                    cycle_ms = excluded.cycle_ms,
+                    detail = excluded.detail,
+                    last_seen_at = excluded.last_seen_at
+                """,
+                (
+                    device_id,
+                    firmware_version,
+                    status,
+                    frame_id,
+                    battery_percent,
+                    wifi_rssi,
+                    cycle_ms,
+                    detail,
+                    timestamp,
+                ),
+            )
+        return {"accepted": True, "server_time": timestamp}
+
+    def devices(self) -> list[dict[str, object]]:
+        with self._connect() as db:
+            rows = db.execute(
+                "SELECT * FROM devices ORDER BY last_seen_at DESC"
+            ).fetchall()
+        return [
+            {
+                "device_id": row["id"],
+                "firmware_version": row["firmware_version"],
+                "status": row["status"],
+                "frame_id": row["frame_id"],
+                "battery_percent": row["battery_percent"],
+                "wifi_rssi": row["wifi_rssi"],
+                "cycle_ms": row["cycle_ms"],
+                "detail": row["detail"],
+                "last_seen_at": row["last_seen_at"],
+            }
+            for row in rows
+        ]
 
     @staticmethod
     def _stored(row: sqlite3.Row) -> StoredPhoto:
@@ -237,4 +313,5 @@ class Catalogue:
             ),
             "last_error": state.get("last_error") or None,
             "has_current_frame": bool(state.get("current_photo_id")),
+            "devices": self.devices(),
         }

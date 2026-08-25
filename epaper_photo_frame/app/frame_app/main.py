@@ -5,12 +5,14 @@ import hmac
 from contextlib import asynccontextmanager, suppress
 from dataclasses import replace
 from pathlib import Path
+from typing import Literal
 
 from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from frame_app.config import Settings
+from frame_app.device_protocol import device_config_payload
 from frame_app.image_pipeline import ImagePipeline
 from frame_app.service import FrameService
 from frame_app.sources.google_photos import GooglePhotosPublicAlbum
@@ -28,6 +30,17 @@ class DisplayOptions(BaseModel):
 class FocusOptions(BaseModel):
     x: float
     y: float
+
+
+class DeviceReport(BaseModel):
+    device_id: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9._-]+$")
+    firmware_version: str | None = Field(default=None, max_length=64)
+    status: Literal["awake", "displayed", "sleeping", "error"]
+    frame_id: str | None = Field(default=None, max_length=256)
+    battery_percent: int | None = Field(default=None, ge=0, le=100)
+    wifi_rssi: int | None = Field(default=None, ge=-120, le=0)
+    cycle_ms: int | None = Field(default=None, ge=0, le=3_600_000)
+    detail: str | None = Field(default=None, max_length=256)
 
 
 def _service() -> FrameService:
@@ -76,7 +89,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="ePaper Photo Frame",
-    version="0.3.1",
+    version="0.4.0",
     lifespan=lifespan,
     docs_url=None,
     redoc_url=None,
@@ -188,15 +201,14 @@ async def clear_frame_focus(
 
 @app.get("/api/device/config")
 async def device_config(current: FrameService = Depends(_device_auth)) -> dict[str, object]:
-    return {
-        "width": current.settings.dimensions[0],
-        "height": current.settings.dimensions[1],
-        "palette": ["white", "black", "red", "yellow", "blue", "green"],
-        "raw_packing": "two 4-bit palette indices per byte, high nibble first",
-        "frame_interval_seconds": current.settings.frame_interval_hours * 3600,
-        "night_start": current.settings.night_start,
-        "night_end": current.settings.night_end,
-    }
+    return device_config_payload(current.settings)
+
+
+@app.post("/api/device/report")
+async def device_report(
+    report: DeviceReport, current: FrameService = Depends(_device_auth)
+) -> dict[str, object]:
+    return current.record_device_report(report.model_dump())
 
 
 async def _frame_response(
@@ -217,6 +229,8 @@ async def _frame_response(
             "X-Frame-Id": photo.id,
             "X-Frame-Width": str(current.settings.dimensions[0]),
             "X-Frame-Height": str(current.settings.dimensions[1]),
+            "X-Frame-Bytes": str(selected.stat().st_size),
+            "ETag": f'"{photo.id}"',
             "Cache-Control": "no-store",
         },
     )

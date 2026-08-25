@@ -210,6 +210,34 @@ class FrameService:
         )
         return status
 
+    def record_device_report(self, report: dict[str, object]) -> dict[str, object]:
+        return self.catalogue.record_device_report(
+            device_id=str(report["device_id"]),
+            firmware_version=(
+                str(report["firmware_version"])
+                if report.get("firmware_version") is not None
+                else None
+            ),
+            status=str(report["status"]),
+            frame_id=(
+                str(report["frame_id"]) if report.get("frame_id") is not None else None
+            ),
+            battery_percent=(
+                int(report["battery_percent"])
+                if report.get("battery_percent") is not None
+                else None
+            ),
+            wifi_rssi=(
+                int(report["wifi_rssi"])
+                if report.get("wifi_rssi") is not None
+                else None
+            ),
+            cycle_ms=(
+                int(report["cycle_ms"]) if report.get("cycle_ms") is not None else None
+            ),
+            detail=str(report["detail"]) if report.get("detail") is not None else None,
+        )
+
     async def background_sync(self) -> None:
         while True:
             try:
