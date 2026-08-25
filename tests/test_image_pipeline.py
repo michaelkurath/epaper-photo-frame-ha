@@ -34,7 +34,9 @@ class ImagePipelineTests(unittest.TestCase):
             with Image.open(output) as rendered:
                 self.assertEqual(rendered.size, (120, 160))
                 rgb = rendered.convert("RGB")
-                self.assertTrue(set(rgb.getdata()).issubset(set(SPECTRA6_PALETTE)))
+                self.assertTrue(
+                    set(rgb.get_flattened_data()).issubset(set(SPECTRA6_PALETTE))
+                )
 
     def test_raw_output_packs_two_pixels_per_byte(self) -> None:
         with TemporaryDirectory() as temporary:
@@ -44,6 +46,33 @@ class ImagePipelineTests(unittest.TestCase):
             pipeline.render_png(source_image(), png)
             pipeline.png_to_raw(png, raw)
             self.assertEqual(raw.stat().st_size, 120 * 160 // 2)
+
+    def test_7_3_inch_landscape_render_has_exact_panel_geometry_and_raw_size(self) -> None:
+        with TemporaryDirectory() as temporary:
+            pipeline = ImagePipeline((800, 480), fit_mode="smart", dither=True)
+            png = Path(temporary) / "p073-frame.png"
+            raw = Path(temporary) / "p073-frame.raw"
+            pipeline.render_png(source_image(), png)
+            pipeline.png_to_raw(png, raw)
+            with Image.open(png) as rendered:
+                self.assertEqual(rendered.size, (800, 480))
+                self.assertTrue(
+                    set(rendered.convert("RGB").get_flattened_data()).issubset(
+                        set(SPECTRA6_PALETTE)
+                    )
+                )
+            self.assertEqual(raw.stat().st_size, 192_000)
+
+    def test_13_3_inch_portrait_render_keeps_existing_raw_format(self) -> None:
+        with TemporaryDirectory() as temporary:
+            pipeline = ImagePipeline((1200, 1600), fit_mode="contain", dither=False)
+            png = Path(temporary) / "p133-frame.png"
+            raw = Path(temporary) / "p133-frame.raw"
+            pipeline.render_png(source_image(), png)
+            pipeline.png_to_raw(png, raw)
+            with Image.open(png) as rendered:
+                self.assertEqual(rendered.size, (1200, 1600))
+            self.assertEqual(raw.stat().st_size, 960_000)
 
     def test_dither_strength_produces_distinct_quality_levels(self) -> None:
         outputs = []
