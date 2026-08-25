@@ -89,6 +89,15 @@
             <option value="40">40 % – wenig Beschnitt</option>
           </select>
         </label>
+        <label>Dithering-Stärke
+          <select id="ditherStrength">
+            <option value="0">Aus – ruhige Farbflächen</option>
+            <option value="25">25 % – sehr sanft</option>
+            <option value="50">50 % – empfohlen</option>
+            <option value="75">75 % – deutlich</option>
+            <option value="100">100 % – vollständig</option>
+          </select>
+        </label>
       </div>
       <p><button id="apply">Anzeige übernehmen</button></p>
       <p><button id="sync">Album jetzt synchronisieren</button></p>
@@ -155,6 +164,7 @@
     byId('orientation').value = data.orientation;
     byId('fitMode').value = data.fit_mode;
     byId('unusedArea').value = String(data.smart_unused_percent ?? 15);
+    byId('ditherStrength').value = String(data.dither ? (data.dither_strength ?? 50) : 0);
     const marker = byId('focusMarker');
     if (data.focus_point) {
       marker.style.left = (data.focus_point[0] * 100) + '%';
@@ -197,7 +207,8 @@
         body: JSON.stringify({
           orientation: byId('orientation').value,
           fit_mode: byId('fitMode').value,
-          smart_unused_percent: Number(byId('unusedArea').value)
+          smart_unused_percent: Number(byId('unusedArea').value),
+          dither_strength: Number(byId('ditherStrength').value)
         })
       });
       if (!response.ok) throw new Error('Anzeige konnte nicht geändert werden');
@@ -279,7 +290,7 @@
   async function reportDevice(status, fields = {}) {
     const response = await fetch(api('api/device/report'), {
       method: 'POST', headers: deviceHeaders(true), body: JSON.stringify({
-        device_id: 'browser-simulator', firmware_version: 'web-simulator-0.4.2',
+        device_id: 'browser-simulator', firmware_version: 'web-simulator-0.5.0',
         status, battery_percent: 100, wifi_rssi: -55, ...fields
       })
     });
