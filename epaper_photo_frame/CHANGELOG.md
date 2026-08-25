@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0 - 2026-08-25
+
+- Replace the PNG API demo with a stateful, accelerated controller simulator.
+- Validate the exact packed RAW data path used by the future ESP32 firmware.
+- Simulate wake-up, configured night pauses, display refresh, and deep sleep.
+- Add authenticated device telemetry and persist the latest controller state.
+- Expose protocol version, RGB palette, expected RAW size, ETag, and frame size
+  metadata through the device API.
+
 ## 0.3.1 - 2026-08-25
 
 - Bundle the OpenCV Haar cascade because Alpine's `py3-opencv` package does not

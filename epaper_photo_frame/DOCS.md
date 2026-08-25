@@ -41,16 +41,37 @@ Authorization: Bearer YOUR_API_TOKEN
 
 Endpoints:
 
-- `GET /api/device/config`: display geometry, sleep interval, and night pause.
+- `GET /api/device/config`: protocol version, display geometry, palette, exact
+  RAW size, sleep interval, and night pause.
 - `GET /api/device/current.png`: current rendered frame, without advancing.
+- `GET /api/device/current.raw`: current packed frame, without advancing.
 - `POST /api/device/next.png`: select and return the next rendered frame.
 - `POST /api/device/next.raw`: the same frame as packed 4-bit palette indices.
+- `POST /api/device/report`: record controller state, displayed frame, battery,
+  Wi-Fi signal, and cycle duration.
 
 RAW data contains two pixels per byte: the first pixel in the high nibble and
 the second in the low nibble. Palette indices are `0 white`, `1 black`, `2 red`,
 `3 yellow`, `4 blue`, `5 green`. The final mapping to the EE02 driver remains a
 firmware concern so it can be changed without touching the album or rendering
 modules.
+
+## Controller simulator
+
+The Web UI contains a browser-based controller simulator that follows the
+planned ESP32 cycle instead of merely previewing a PNG:
+
+1. wake and fetch `/api/device/config`;
+2. skip the display refresh during the configured night window;
+3. download the packed RAW frame and validate dimensions, byte count, and all
+   palette indices;
+4. reconstruct the display image directly from the RAW data;
+5. report the displayed frame and simulated device telemetry;
+6. enter simulated deep sleep until the next cycle.
+
+Automatic mode advances a virtual clock by the real frame interval while only
+waiting 5, 10, or 30 seconds in the browser. It therefore tests multi-cycle and
+night-window behaviour without waiting several hours.
 
 ## Operational behaviour
 
