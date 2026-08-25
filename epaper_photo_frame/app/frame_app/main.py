@@ -76,7 +76,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="ePaper Photo Frame",
-    version="0.3.0",
+    version="0.3.1",
     lifespan=lifespan,
     docs_url=None,
     redoc_url=None,
@@ -114,6 +114,10 @@ async def preview(current: FrameService = Depends(_service)) -> FileResponse:
         photo, png, _ = await current.current_frame()
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail=f"{type(exc).__name__}: frame processing failed"
+        ) from exc
     return FileResponse(png, media_type="image/png", headers={"X-Frame-Id": photo.id})
 
 
@@ -127,6 +131,10 @@ async def _select_preview(mode: str, current: FrameService) -> dict[str, str]:
             photo, _, _ = await current.next_frame()
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail=f"{type(exc).__name__}: frame processing failed"
+        ) from exc
     return {"photo_id": photo.id}
 
 

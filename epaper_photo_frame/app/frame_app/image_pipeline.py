@@ -53,25 +53,46 @@ class ImagePipeline:
         try:
             import cv2
             import numpy as np
-        except ImportError:
+        except (ImportError, RuntimeError):
             return []
-        cascade_path = getattr(cv2.data, "haarcascades", "") + "haarcascade_frontalface_default.xml"
-        classifier = cv2.CascadeClassifier(cascade_path)
-        if classifier.empty():
+
+        bundled = Path(__file__).parent / "data" / "haarcascade_frontalface_default.xml"
+        cv2_data = getattr(cv2, "data", None)
+        candidates = [bundled]
+        if cv2_data is not None:
+            haarcascades = getattr(cv2_data, "haarcascades", "")
+            if haarcascades:
+                candidates.append(Path(haarcascades) / bundled.name)
+        cascade_path = next((path for path in candidates if path.is_file()), None)
+        if cascade_path is None:
             return []
-        scale = min(1.0, 900 / max(image.size))
-        sample = image.resize(
-            (max(1, round(image.width * scale)), max(1, round(image.height * scale))),
-            Image.Resampling.LANCZOS,
-        )
-        gray = cv2.cvtColor(np.asarray(sample), cv2.COLOR_RGB2GRAY)
-        detected = classifier.detectMultiScale(
-            gray, scaleFactor=1.1, minNeighbors=5, minSize=(28, 28)
-        )
-        return [
-            (x / sample.width, y / sample.height, (x + w) / sample.width, (y + h) / sample.height)
-            for x, y, w, h in detected
-        ]
+
+        try:
+            classifier = cv2.CascadeClassifier(str(cascade_path))
+            if classifier.empty():
+                return []
+            scale = min(1.0, 900 / max(image.size))
+            sample = image.resize(
+                (max(1, round(image.width * scale)), max(1, round(image.height * scale))),
+                Image.Resampling.LANCZOS,
+            )
+            gray = cv2.cvtColor(np.asarray(sample), cv2.COLOR_RGB2GRAY)
+            detected = classifier.detectMultiScale(
+                gray, scaleFactor=1.1, minNeighbors=5, minSize=(28, 28)
+            )
+            return [
+                (
+                    x / sample.width,
+                    y / sample.height,
+                    (x + w) / sample.width,
+                    (y + h) / sample.height,
+                )
+                for x, y, w, h in detected
+            ]
+        except Exception:
+            # Face detection is an enhancement. Smart Crop must still fall back
+            # to detail analysis if a platform OpenCV build cannot run it.
+            return []
 
     @staticmethod
     def _detail_focus(image: Image.Image) -> tuple[float, float]:
