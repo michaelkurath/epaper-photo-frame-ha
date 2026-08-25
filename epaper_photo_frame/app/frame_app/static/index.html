@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ePaper Photo Frame</title>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+    body { margin: 0; background: #101820; color: #f6f4ee; }
+    main { max-width: 900px; margin: auto; padding: 24px; }
+    h1 { font-size: 1.7rem; margin: 0 0 18px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); gap: 12px; }
+    .card { background: #1c2933; border-radius: 12px; padding: 16px; box-shadow: 0 4px 18px #0004; }
+    .label { color: #a8bac6; font-size: .8rem; }
+    .value { font-size: 1.25rem; margin-top: 4px; overflow-wrap: anywhere; }
+    .preview { margin-top: 16px; display: grid; grid-template-columns: minmax(220px, 420px) 1fr; gap: 18px; align-items: start; }
+    img { width: 100%; height: auto; background: white; border-radius: 10px; }
+    button { border: 0; border-radius: 9px; padding: 12px 16px; font: inherit; font-weight: 650; background: #ffcc33; color: #172029; cursor: pointer; }
+    button:disabled { opacity: .6; cursor: wait; }
+    .controls { display: flex; flex-wrap: wrap; gap: 9px; margin: 0 0 18px; }
+    .secondary { background: #314453; color: #f6f4ee; }
+    .settings { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 18px 0; }
+    label { display: grid; gap: 6px; color: #a8bac6; font-size: .8rem; }
+    select { border: 1px solid #526675; border-radius: 8px; padding: 10px; font: inherit; background: #101820; color: #f6f4ee; }
+    #message { min-height: 1.5em; color: #a8bac6; }
+    .error { color: #ff8b8b !important; }
+    @media (max-width: 680px) { .preview { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>ePaper Photo Frame</h1>
+  <section class="grid">
+    <div class="card"><div class="label">Album</div><div class="value" id="album">–</div></div>
+    <div class="card"><div class="label">Fotos</div><div class="value" id="photos">–</div></div>
+    <div class="card"><div class="label">Neue Fotos</div><div class="value" id="newPhotos">–</div></div>
+    <div class="card"><div class="label">Letzte Synchronisierung</div><div class="value" id="lastSync">–</div></div>
+  </section>
+  <section class="preview">
+    <div class="card"><img id="preview" alt="Sechsfarben-Vorschau"></div>
+    <div class="card">
+      <div class="controls">
+        <button class="secondary frame" data-action="previous">← Vorheriges</button>
+        <button class="secondary frame" data-action="random">Zufällig</button>
+        <button class="secondary frame" data-action="next">Nächstes →</button>
+      </div>
+      <div class="settings">
+        <label>Ausrichtung
+          <select id="orientation">
+            <option value="portrait">Hochformat</option>
+            <option value="landscape">Querformat</option>
+          </select>
+        </label>
+        <label>Bildanpassung
+          <select id="fitMode">
+            <option value="cover">Füllen (Beschnitt)</option>
+            <option value="contain">Ganzes Bild</option>
+          </select>
+        </label>
+      </div>
+      <p><button id="apply">Anzeige übernehmen</button></p>
+      <p><button id="sync">Album jetzt synchronisieren</button></p>
+      <p id="message">Status wird geladen …</p>
+      <p class="label">Die Vorschau nutzt genau dieselben sechs Farben wie der Display-Export.</p>
+    </div>
+  </section>
+</main>
+<script>
+  const byId = id => document.getElementById(id);
+  const api = path => new URL(path, window.location.href).toString();
+  const asDate = value => value ? new Date(value * 1000).toLocaleString() : '–';
+  async function refresh() {
+    const response = await fetch(api('api/status'));
+    if (!response.ok) throw new Error('Status nicht verfügbar');
+    const data = await response.json();
+    byId('album').textContent = data.album_title || '–';
+    byId('photos').textContent = data.photo_count;
+    byId('newPhotos').textContent = data.new_photo_count;
+    byId('lastSync').textContent = asDate(data.last_sync);
+    byId('orientation').value = data.orientation;
+    byId('fitMode').value = data.fit_mode;
+    byId('message').textContent = data.last_error || 'Bereit';
+    byId('message').className = data.last_error ? 'error' : '';
+    if (data.photo_count) byId('preview').src = api('api/preview.png') + '?t=' + Date.now();
+  }
+  byId('sync').addEventListener('click', async () => {
+    const button = byId('sync'); button.disabled = true;
+    byId('message').textContent = 'Synchronisierung läuft …';
+    try {
+      const response = await fetch(api('api/sync'), {method: 'POST'});
+      if (!response.ok) throw new Error('Synchronisierung fehlgeschlagen');
+      await refresh();
+    } catch (error) {
+      byId('message').textContent = error.message; byId('message').className = 'error';
+    } finally { button.disabled = false; }
+  });
+  document.querySelectorAll('.frame').forEach(button => button.addEventListener('click', async () => {
+    document.querySelectorAll('.frame').forEach(item => item.disabled = true);
+    byId('message').textContent = 'Foto wird vorbereitet …';
+    try {
+      const response = await fetch(api('api/frame/' + button.dataset.action), {method: 'POST'});
+      if (!response.ok) throw new Error((await response.json()).detail || 'Foto konnte nicht geladen werden');
+      await refresh();
+    } catch (error) {
+      byId('message').textContent = error.message; byId('message').className = 'error';
+    } finally { document.querySelectorAll('.frame').forEach(item => item.disabled = false); }
+  }));
+  byId('apply').addEventListener('click', async () => {
+    const button = byId('apply'); button.disabled = true;
+    byId('message').textContent = 'Anzeige wird neu berechnet …';
+    try {
+      const response = await fetch(api('api/display'), {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({orientation: byId('orientation').value, fit_mode: byId('fitMode').value})
+      });
+      if (!response.ok) throw new Error('Anzeige konnte nicht geändert werden');
+      await refresh();
+    } catch (error) {
+      byId('message').textContent = error.message; byId('message').className = 'error';
+    } finally { button.disabled = false; }
+  });
+  refresh().catch(error => { byId('message').textContent = error.message; byId('message').className = 'error'; });
+</script>
+</body>
+</html>
