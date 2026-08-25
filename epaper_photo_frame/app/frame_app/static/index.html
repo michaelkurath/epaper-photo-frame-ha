@@ -76,6 +76,19 @@
             <option value="contain">Ganzes Bild</option>
           </select>
         </label>
+        <label>Erlaubte freie Fläche
+          <select id="unusedArea">
+            <option value="0">0 % – randlos</option>
+            <option value="5">5 %</option>
+            <option value="10">10 %</option>
+            <option value="15">15 % – empfohlen</option>
+            <option value="20">20 %</option>
+            <option value="25">25 %</option>
+            <option value="30">30 %</option>
+            <option value="35">35 %</option>
+            <option value="40">40 % – wenig Beschnitt</option>
+          </select>
+        </label>
       </div>
       <p><button id="apply">Anzeige übernehmen</button></p>
       <p><button id="sync">Album jetzt synchronisieren</button></p>
@@ -141,6 +154,7 @@
     byId('lastSync').textContent = asDate(data.last_sync);
     byId('orientation').value = data.orientation;
     byId('fitMode').value = data.fit_mode;
+    byId('unusedArea').value = String(data.smart_unused_percent ?? 15);
     const marker = byId('focusMarker');
     if (data.focus_point) {
       marker.style.left = (data.focus_point[0] * 100) + '%';
@@ -180,7 +194,11 @@
       const response = await fetch(api('api/display'), {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({orientation: byId('orientation').value, fit_mode: byId('fitMode').value})
+        body: JSON.stringify({
+          orientation: byId('orientation').value,
+          fit_mode: byId('fitMode').value,
+          smart_unused_percent: Number(byId('unusedArea').value)
+        })
       });
       if (!response.ok) throw new Error('Anzeige konnte nicht geändert werden');
       await refresh();
@@ -261,7 +279,7 @@
   async function reportDevice(status, fields = {}) {
     const response = await fetch(api('api/device/report'), {
       method: 'POST', headers: deviceHeaders(true), body: JSON.stringify({
-        device_id: 'browser-simulator', firmware_version: 'web-simulator-0.4.0',
+        device_id: 'browser-simulator', firmware_version: 'web-simulator-0.4.2',
         status, battery_percent: 100, wifi_rssi: -55, ...fields
       })
     });
