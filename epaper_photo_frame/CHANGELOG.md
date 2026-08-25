@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.1 - 2026-08-25
+
+- Keep the complete photo when Contain already uses at least 85% of the screen.
+- When more space would be unused, crop only enough to reach 85% coverage
+  instead of zooming all the way to a borderless frame.
+- Preserve face-aware and manual focus positioning within the gentler crop.
+- Invalidate old rendered-frame cache keys so upgraded installations immediately
+  use the new crop behaviour.
+
 ## 0.4.0 - 2026-08-25
 
 - Replace the PNG API demo with a stateful, accelerated controller simulator.
