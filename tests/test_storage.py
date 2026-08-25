@@ -52,6 +52,30 @@ class StorageTests(unittest.TestCase):
         self.catalogue.sync(snapshot(a), now=200)
         self.assertEqual(self.catalogue.status()["photo_count"], 1)
 
+    def test_random_does_not_repeat_current_photo(self) -> None:
+        a = SourcePhoto("a", "https://lh3.googleusercontent.com/a")
+        b = SourcePhoto("b", "https://lh3.googleusercontent.com/b")
+        self.catalogue.sync(snapshot(a, b), now=100)
+        self.catalogue.mark_shown("a", now=101)
+
+        selected = self.catalogue.choose_random()
+        self.assertIsNotNone(selected)
+        self.assertEqual(selected.id, "b")
+
+    def test_previous_returns_last_other_shown_photo(self) -> None:
+        photos = tuple(
+            SourcePhoto(name, f"https://lh3.googleusercontent.com/{name}")
+            for name in ("a", "b", "c")
+        )
+        self.catalogue.sync(snapshot(*photos), now=100)
+        self.catalogue.mark_shown("a", now=101)
+        self.catalogue.mark_shown("b", now=102)
+        self.catalogue.mark_shown("c", now=103)
+
+        selected = self.catalogue.choose_previous()
+        self.assertIsNotNone(selected)
+        self.assertEqual(selected.id, "b")
+
 
 if __name__ == "__main__":
     unittest.main()
