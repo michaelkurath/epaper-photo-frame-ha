@@ -20,6 +20,12 @@ SPECTRA6_PALETTE: tuple[tuple[int, int, int], ...] = (
     (35, 145, 70),
 )
 
+# Smart Crop may leave slim borders instead of discarding more of the photo.
+# Cropping starts only when a contained image would use less than this share of
+# the target display, and then removes only enough material to reach it.
+SMART_TARGET_COVERAGE = 0.85
+RENDER_CACHE_VERSION = "smart-minimal-v1"
+
 
 class ImagePipeline:
     def __init__(
@@ -109,12 +115,18 @@ class ImagePipeline:
     def _smart_crop(self, image: Image.Image) -> Image.Image:
         target_ratio = self.dimensions[0] / self.dimensions[1]
         source_ratio = image.width / image.height
-        if source_ratio >= target_ratio:
+        contained_coverage = min(source_ratio, target_ratio) / max(
+            source_ratio, target_ratio
+        )
+        if contained_coverage >= SMART_TARGET_COVERAGE:
+            return self._contain(self._enhance(image))
+
+        if source_ratio > target_ratio:
             crop_height = image.height
-            crop_width = crop_height * target_ratio
+            crop_width = crop_height * target_ratio / SMART_TARGET_COVERAGE
         else:
             crop_width = image.width
-            crop_height = crop_width / target_ratio
+            crop_height = crop_width / (target_ratio * SMART_TARGET_COVERAGE)
 
         faces = self.face_detector(image)
         use_contain = False
@@ -133,16 +145,19 @@ class ImagePipeline:
             focus_x, focus_y = self._detail_focus(image)
 
         if use_contain:
-            return self._contain(image)
+            return self._contain(self._enhance(image))
         left_px = min(max(focus_x * image.width - crop_width / 2, 0), image.width - crop_width)
         top_px = min(max(focus_y * image.height - crop_height / 2, 0), image.height - crop_height)
         cropped = image.crop(
             (round(left_px), round(top_px), round(left_px + crop_width), round(top_px + crop_height))
         )
-        fitted = cropped.resize(self.dimensions, Image.Resampling.LANCZOS)
-        fitted = ImageOps.autocontrast(fitted, cutoff=1)
-        fitted = ImageEnhance.Contrast(fitted).enhance(1.06)
-        return ImageEnhance.Color(fitted).enhance(1.04)
+        return self._contain(self._enhance(cropped))
+
+    @staticmethod
+    def _enhance(image: Image.Image) -> Image.Image:
+        enhanced = ImageOps.autocontrast(image, cutoff=1)
+        enhanced = ImageEnhance.Contrast(enhanced).enhance(1.06)
+        return ImageEnhance.Color(enhanced).enhance(1.04)
 
     def _contain(self, image: Image.Image) -> Image.Image:
         contained = ImageOps.contain(

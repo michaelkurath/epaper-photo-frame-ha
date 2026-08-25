@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from frame_app.config import Settings
-from frame_app.image_pipeline import ImagePipeline
+from frame_app.image_pipeline import ImagePipeline, RENDER_CACHE_VERSION
 from frame_app.models import StoredPhoto
 from frame_app.sources.base import PhotoSource
 from frame_app.storage import Catalogue
@@ -42,7 +42,8 @@ class FrameService:
         focus = self.catalogue.get_focus(photo_id)
         focus_key = "auto" if focus is None else f"{focus[0]:.6f},{focus[1]:.6f}"
         render_key = self._cache_key(
-            f"{photo_id}:{self.settings.orientation}:{self.settings.fit_mode}:"
+            f"{RENDER_CACHE_VERSION}:{photo_id}:{self.settings.orientation}:"
+            f"{self.settings.fit_mode}:"
             f"{int(self.settings.dither)}:{focus_key}"
         )
         return (
