@@ -19,6 +19,7 @@ class ConfigTests(unittest.TestCase):
                         "album_url": "https://photos.google.com/share/example?key=test",
                         "api_token": "0123456789abcdef",
                         "orientation": "landscape",
+                        "smart_unused_percent": 25,
                         "dither": False,
                     }
                 ),
@@ -31,7 +32,25 @@ class ConfigTests(unittest.TestCase):
             with patch.dict(os.environ, environment, clear=False):
                 settings = Settings.load()
             self.assertEqual(settings.dimensions, (1600, 1200))
+            self.assertEqual(settings.smart_unused_percent, 25)
             self.assertFalse(settings.dither)
+
+    def test_rejects_invalid_unused_percentage(self) -> None:
+        with TemporaryDirectory() as temporary:
+            options = Path(temporary) / "options.json"
+            options.write_text(
+                json.dumps(
+                    {
+                        "album_url": "https://photos.google.com/share/example?key=test",
+                        "api_token": "0123456789abcdef",
+                        "smart_unused_percent": 41,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with patch.dict(os.environ, {"EPAPER_OPTIONS_FILE": str(options)}, clear=False):
+                with self.assertRaises(ValueError):
+                    Settings.load()
 
     def test_rejects_short_device_token(self) -> None:
         with TemporaryDirectory() as temporary:

@@ -10,7 +10,7 @@ from PIL import Image
 
 from frame_app.image_pipeline import (
     ImagePipeline,
-    SMART_TARGET_COVERAGE,
+    SMART_DEFAULT_UNUSED_PERCENT,
     SPECTRA6_PALETTE,
 )
 
@@ -83,9 +83,33 @@ class ImagePipelineTests(unittest.TestCase):
             face_detector=lambda _: [],
         )
         fitted = pipeline._fit(image)
-        self.assertEqual(SMART_TARGET_COVERAGE, 0.85)
+        self.assertEqual(SMART_DEFAULT_UNUSED_PERCENT, 15)
+        self.assertEqual(pipeline.smart_target_coverage, 0.85)
         self.assertEqual(fitted.getpixel((50, 0)), SPECTRA6_PALETTE[0])
         self.assertNotEqual(fitted.getpixel((50, 50)), SPECTRA6_PALETTE[0])
+
+    def test_allowed_unused_percentage_controls_zoom_amount(self) -> None:
+        image = Image.new("RGB", (200, 100), "blue")
+        borderless = ImagePipeline(
+            (100, 100),
+            fit_mode="smart",
+            dither=False,
+            smart_unused_percent=0,
+            face_detector=lambda _: [],
+        )._fit(image)
+        gentle = ImagePipeline(
+            (100, 100),
+            fit_mode="smart",
+            dither=False,
+            smart_unused_percent=30,
+            face_detector=lambda _: [],
+        )._fit(image)
+        self.assertNotEqual(borderless.getpixel((50, 0)), SPECTRA6_PALETTE[0])
+        self.assertEqual(gentle.getpixel((50, 0)), SPECTRA6_PALETTE[0])
+
+    def test_rejects_invalid_unused_percentage(self) -> None:
+        with self.assertRaises(ValueError):
+            ImagePipeline((100, 100), fit_mode="smart", smart_unused_percent=41)
 
     def test_alpine_opencv_without_data_module_falls_back_safely(self) -> None:
         class EmptyClassifier:
