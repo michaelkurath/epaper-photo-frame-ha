@@ -7,10 +7,23 @@
 int main() {
   using namespace photo_frame;
 
-  static_assert(validGeometry(1200, 1600));
-  static_assert(validGeometry(1600, 1200));
-  static_assert(!validGeometry(800, 600));
+  static_assert(validGeometry(1200, 1600, kP133PortraitWidth,
+                              kP133PortraitHeight));
+  static_assert(validGeometry(1600, 1200, kP133PortraitWidth,
+                              kP133PortraitHeight));
+  static_assert(validGeometry(480, 800, kP073PortraitWidth,
+                              kP073PortraitHeight));
+  static_assert(validGeometry(800, 480, kP073PortraitWidth,
+                              kP073PortraitHeight));
+  static_assert(!validGeometry(800, 480, kP133PortraitWidth,
+                               kP133PortraitHeight));
+  static_assert(!validGeometry(1200, 1600, kP073PortraitWidth,
+                               kP073PortraitHeight));
+  static_assert(knownGeometry(1200, 1600));
+  static_assert(knownGeometry(800, 480));
+  static_assert(!knownGeometry(800, 600));
   static_assert(rawSize(1200, 1600) == 960000);
+  static_assert(rawSize(800, 480) == 192000);
   static_assert(highPixel(0x52) == 5);
   static_assert(lowPixel(0x52) == 2);
   static_assert(validPackedByte(0x05));
@@ -31,6 +44,6 @@ int main() {
   assert(!inNightWindow(12 * 60, 12 * 60, 12 * 60));
   assert(secondsUntilNightEnd(23 * 60, 7 * 60) == 8U * 3600U);
 
-  std::cout << "EE02 firmware core tests passed\n";
+  std::cout << "EE02/EE04 firmware core tests passed\n";
   return 0;
 }
