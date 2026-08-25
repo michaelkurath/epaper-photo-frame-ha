@@ -83,6 +83,40 @@ class StorageTests(unittest.TestCase):
         self.catalogue.clear_focus("photo-a")
         self.assertIsNone(self.catalogue.get_focus("photo-a"))
 
+    def test_latest_device_report_is_persisted(self) -> None:
+        response = self.catalogue.record_device_report(
+            device_id="browser-simulator",
+            firmware_version="web-simulator-0.4.0",
+            status="sleeping",
+            frame_id="photo-a",
+            battery_percent=100,
+            wifi_rssi=-55,
+            cycle_ms=1234,
+            detail="deep sleep",
+            now=500,
+        )
+        self.assertEqual(response, {"accepted": True, "server_time": 500})
+        devices = self.catalogue.status()["devices"]
+        self.assertEqual(len(devices), 1)
+        self.assertEqual(devices[0]["device_id"], "browser-simulator")
+        self.assertEqual(devices[0]["frame_id"], "photo-a")
+        self.assertEqual(devices[0]["last_seen_at"], 500)
+
+        self.catalogue.record_device_report(
+            device_id="browser-simulator",
+            firmware_version="web-simulator-0.4.0",
+            status="error",
+            frame_id="photo-a",
+            battery_percent=99,
+            wifi_rssi=-60,
+            cycle_ms=1400,
+            detail="test error",
+            now=600,
+        )
+        latest = self.catalogue.devices()[0]
+        self.assertEqual(latest["status"], "error")
+        self.assertEqual(latest["last_seen_at"], 600)
+
 
 if __name__ == "__main__":
     unittest.main()
