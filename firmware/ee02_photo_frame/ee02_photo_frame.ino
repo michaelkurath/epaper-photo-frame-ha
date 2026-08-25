@@ -15,6 +15,12 @@
 #error "BOARD_SCREEN_COMBO in driver.h must select an ePaper setup"
 #endif
 
+#if !defined(PHOTO_FRAME_DISPLAY_MODEL) || !defined(PHOTO_FRAME_DEVICE_PREFIX) || \
+    !defined(PHOTO_FRAME_HARDWARE_NAME) || !defined(PHOTO_FRAME_PORTRAIT_WIDTH) || \
+    !defined(PHOTO_FRAME_PORTRAIT_HEIGHT)
+#error "driver.h must define the complete photo-frame hardware profile"
+#endif
+
 #if __has_include("secrets.h")
 #include "secrets.h"
 #else
@@ -23,7 +29,7 @@
 
 namespace {
 
-constexpr char kFirmwareVersion[] = "0.1.0";
+constexpr char kFirmwareVersion[] = "0.2.0";
 constexpr std::uint32_t kWifiTimeoutMs = 30000;
 constexpr std::uint32_t kHttpTimeoutMs = 45000;
 constexpr std::uint32_t kErrorRetrySeconds = 15 * 60;
@@ -35,6 +41,7 @@ RTC_DATA_ATTR bool gHasDisplayedFrame = false;
 EPaper epaper;
 
 struct DeviceConfig {
+  String displayModel;
   std::uint16_t width = 0;
   std::uint16_t height = 0;
   std::size_t rawSize = 0;
@@ -62,7 +69,7 @@ String deviceId() {
   String value = WiFi.macAddress();
   value.replace(":", "");
   value.toLowerCase();
-  return "ee02-" + value;
+  return String(PHOTO_FRAME_DEVICE_PREFIX) + value;
 }
 
 void addAuthorization(HTTPClient& http) {
@@ -128,6 +135,7 @@ bool fetchConfig(DeviceConfig& config, String& detail) {
   }
 
   const int protocol = document["protocol_version"] | 0;
+  config.displayModel = document["display_model"] | "";
   config.width = document["width"] | 0;
   config.height = document["height"] | 0;
   config.rawSize = document["raw_size_bytes"] | 0;
@@ -141,7 +149,11 @@ bool fetchConfig(DeviceConfig& config, String& detail) {
   int unusedMinutes = 0;
   if (protocol != 1) {
     detail = "unsupported device protocol " + String(protocol);
-  } else if (!photo_frame::validGeometry(config.width, config.height)) {
+  } else if (config.displayModel != PHOTO_FRAME_DISPLAY_MODEL) {
+    detail = "server display profile does not match firmware";
+  } else if (!photo_frame::validGeometry(
+                 config.width, config.height, PHOTO_FRAME_PORTRAIT_WIDTH,
+                 PHOTO_FRAME_PORTRAIT_HEIGHT)) {
     detail = "unexpected display geometry";
   } else if (config.rawSize != photo_frame::rawSize(config.width, config.height)) {
     detail = "unexpected RAW size";
@@ -369,7 +381,8 @@ void setup() {
   Serial.begin(115200);
   delay(1500);
   const std::uint32_t started = millis();
-  Serial.printf("ePaper Photo Frame EE02 firmware %s\n", kFirmwareVersion);
+  Serial.printf("ePaper Photo Frame %s firmware %s\n", PHOTO_FRAME_HARDWARE_NAME,
+                kFirmwareVersion);
 
   if (!connectWifi()) {
     failCycle("Wi-Fi unavailable", started);
