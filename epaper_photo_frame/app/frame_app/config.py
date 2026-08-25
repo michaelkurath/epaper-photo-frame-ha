@@ -14,6 +14,7 @@ class Settings:
     frame_interval_hours: int = 4
     fit_mode: str = "cover"
     orientation: str = "portrait"
+    smart_unused_percent: int = 15
     dither: bool = True
     night_start: str = "23:00"
     night_end: str = "07:00"
@@ -47,6 +48,9 @@ class Settings:
             raise ValueError("fit_mode must be cover, contain or smart")
         if orientation not in {"portrait", "landscape"}:
             raise ValueError("orientation must be portrait or landscape")
+        smart_unused_percent = int(option("smart_unused_percent", 15) or 0)
+        if not 0 <= smart_unused_percent <= 40:
+            raise ValueError("smart_unused_percent must be between 0 and 40")
 
         raw_dither = option("dither", True)
         if isinstance(raw_dither, str):
@@ -61,6 +65,7 @@ class Settings:
             frame_interval_hours=int(option("frame_interval_hours", 4) or 4),
             fit_mode=fit_mode,
             orientation=orientation,
+            smart_unused_percent=smart_unused_percent,
             dither=dither,
             night_start=str(option("night_start", "23:00")),
             night_end=str(option("night_end", "07:00")),

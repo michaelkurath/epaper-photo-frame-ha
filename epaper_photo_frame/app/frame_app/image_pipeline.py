@@ -23,8 +23,8 @@ SPECTRA6_PALETTE: tuple[tuple[int, int, int], ...] = (
 # Smart Crop may leave slim borders instead of discarding more of the photo.
 # Cropping starts only when a contained image would use less than this share of
 # the target display, and then removes only enough material to reach it.
-SMART_TARGET_COVERAGE = 0.85
-RENDER_CACHE_VERSION = "smart-minimal-v1"
+SMART_DEFAULT_UNUSED_PERCENT = 15
+RENDER_CACHE_VERSION = "smart-minimal-v2"
 
 
 class ImagePipeline:
@@ -34,16 +34,21 @@ class ImagePipeline:
         *,
         fit_mode: str = "cover",
         dither: bool = True,
+        smart_unused_percent: int = SMART_DEFAULT_UNUSED_PERCENT,
         focus_point: tuple[float, float] | None = None,
         face_detector: FaceDetector | None = None,
     ) -> None:
         self.dimensions = dimensions
         self.fit_mode = fit_mode
         self.dither = dither
+        self.smart_unused_percent = smart_unused_percent
+        self.smart_target_coverage = 1.0 - smart_unused_percent / 100
         self.focus_point = focus_point
         self.face_detector = face_detector or self._detect_faces_opencv
         if fit_mode not in {"cover", "contain", "smart"}:
             raise ValueError("fit_mode must be cover, contain or smart")
+        if not 0 <= smart_unused_percent <= 40:
+            raise ValueError("smart_unused_percent must be between 0 and 40")
         if focus_point and not all(0.0 <= value <= 1.0 for value in focus_point):
             raise ValueError("focus_point coordinates must be between 0 and 1")
 
@@ -118,15 +123,15 @@ class ImagePipeline:
         contained_coverage = min(source_ratio, target_ratio) / max(
             source_ratio, target_ratio
         )
-        if contained_coverage >= SMART_TARGET_COVERAGE:
+        if contained_coverage >= self.smart_target_coverage:
             return self._contain(self._enhance(image))
 
         if source_ratio > target_ratio:
             crop_height = image.height
-            crop_width = crop_height * target_ratio / SMART_TARGET_COVERAGE
+            crop_width = crop_height * target_ratio / self.smart_target_coverage
         else:
             crop_width = image.width
-            crop_height = crop_width / (target_ratio * SMART_TARGET_COVERAGE)
+            crop_height = crop_width / (target_ratio * self.smart_target_coverage)
 
         faces = self.face_detector(image)
         use_contain = False

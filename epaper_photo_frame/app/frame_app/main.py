@@ -25,6 +25,7 @@ service: FrameService | None = None
 class DisplayOptions(BaseModel):
     orientation: str
     fit_mode: str
+    smart_unused_percent: int = Field(default=15, ge=0, le=40)
 
 
 class FocusOptions(BaseModel):
@@ -71,10 +72,25 @@ async def lifespan(app: FastAPI):
     catalogue = Catalogue(settings.data_dir / "catalogue.sqlite3")
     orientation = catalogue.get_state("display_orientation") or settings.orientation
     fit_mode = catalogue.get_state("display_fit_mode") or settings.fit_mode
-    settings = replace(settings, orientation=orientation, fit_mode=fit_mode)
+    stored_unused = catalogue.get_state("display_smart_unused_percent")
+    try:
+        smart_unused_percent = int(stored_unused) if stored_unused is not None else settings.smart_unused_percent
+    except ValueError:
+        smart_unused_percent = settings.smart_unused_percent
+    if not 0 <= smart_unused_percent <= 40:
+        smart_unused_percent = settings.smart_unused_percent
+    settings = replace(
+        settings,
+        orientation=orientation,
+        fit_mode=fit_mode,
+        smart_unused_percent=smart_unused_percent,
+    )
     source = GooglePhotosPublicAlbum(settings.album_url)
     pipeline = ImagePipeline(
-        settings.dimensions, fit_mode=settings.fit_mode, dither=settings.dither
+        settings.dimensions,
+        fit_mode=settings.fit_mode,
+        dither=settings.dither,
+        smart_unused_percent=settings.smart_unused_percent,
     )
     service = FrameService(settings, source, catalogue, pipeline)
     task = asyncio.create_task(service.background_sync())
@@ -89,7 +105,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="ePaper Photo Frame",
-    version="0.4.1",
+    version="0.4.2",
     lifespan=lifespan,
     docs_url=None,
     redoc_url=None,
@@ -171,7 +187,9 @@ async def display_options(
     options: DisplayOptions, current: FrameService = Depends(_service)
 ) -> dict[str, object]:
     try:
-        await current.set_display_options(options.orientation, options.fit_mode)
+        await current.set_display_options(
+            options.orientation, options.fit_mode, options.smart_unused_percent
+        )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return current.status()

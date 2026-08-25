@@ -44,7 +44,7 @@ class FrameService:
         render_key = self._cache_key(
             f"{RENDER_CACHE_VERSION}:{photo_id}:{self.settings.orientation}:"
             f"{self.settings.fit_mode}:"
-            f"{int(self.settings.dither)}:{focus_key}"
+            f"{self.settings.smart_unused_percent}:{int(self.settings.dither)}:{focus_key}"
         )
         return (
             self.original_dir / f"{key}.image",
@@ -52,22 +52,33 @@ class FrameService:
             self.render_dir / f"{render_key}.raw",
         )
 
-    async def set_display_options(self, orientation: str, fit_mode: str) -> None:
+    async def set_display_options(
+        self, orientation: str, fit_mode: str, smart_unused_percent: int
+    ) -> None:
         if orientation not in {"portrait", "landscape"}:
             raise ValueError("orientation must be portrait or landscape")
         if fit_mode not in {"cover", "contain", "smart"}:
             raise ValueError("fit_mode must be cover, contain or smart")
+        if not 0 <= smart_unused_percent <= 40:
+            raise ValueError("smart_unused_percent must be between 0 and 40")
         async with self._frame_lock:
             self.settings = replace(
-                self.settings, orientation=orientation, fit_mode=fit_mode
+                self.settings,
+                orientation=orientation,
+                fit_mode=fit_mode,
+                smart_unused_percent=smart_unused_percent,
             )
             self.pipeline = ImagePipeline(
                 self.settings.dimensions,
                 fit_mode=self.settings.fit_mode,
                 dither=self.settings.dither,
+                smart_unused_percent=self.settings.smart_unused_percent,
             )
             self.catalogue.set_state("display_orientation", orientation)
             self.catalogue.set_state("display_fit_mode", fit_mode)
+            self.catalogue.set_state(
+                "display_smart_unused_percent", str(smart_unused_percent)
+            )
 
     async def set_focus(self, x: float, y: float) -> tuple[float, float]:
         if not 0.0 <= x <= 1.0 or not 0.0 <= y <= 1.0:
@@ -139,6 +150,7 @@ class FrameService:
                 self.settings.dimensions,
                 fit_mode=self.settings.fit_mode,
                 dither=self.settings.dither,
+                smart_unused_percent=self.settings.smart_unused_percent,
                 focus_point=self.catalogue.get_focus(photo.id),
             )
             await asyncio.to_thread(pipeline.render_png, original.read_bytes(), png)
@@ -201,6 +213,7 @@ class FrameService:
                 "width": self.settings.dimensions[0],
                 "height": self.settings.dimensions[1],
                 "fit_mode": self.settings.fit_mode,
+                "smart_unused_percent": self.settings.smart_unused_percent,
                 "dither": self.settings.dither,
                 "focus_point": (
                     self.catalogue.get_focus(photo_id)
