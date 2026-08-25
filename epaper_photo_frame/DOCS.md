@@ -24,6 +24,25 @@ perform this copy when `local_apps` is mounted as a normal directory.
 The link and token live in `/data/options.json` inside the App data volume and
 are intentionally absent from Git.
 
+## Display profile
+
+Choose the profile that exactly matches the physical panel and controller:
+
+| App value | Panel | Controller | Portrait | Landscape | RAW bytes |
+| --- | --- | --- | ---: | ---: | ---: |
+| `spectra_7_3_ee04` | 7.3-inch Spectra 6 (P073_SP6) | XIAO EE04 | 480 x 800 | 800 x 480 | 192,000 |
+| `spectra_13_3_ee02` | 13.3-inch Spectra 6 (P133_SP6) | XIAO EE02 | 1200 x 1600 | 1600 x 1200 | 960,000 |
+
+The 7.3-inch 50-pin panel is not electrically interchangeable with the EE02
+board used by the 13.3-inch panel. Change `display_model` in the App
+configuration, save, and restart the App. Existing installations default to
+`spectra_13_3_ee02` for backwards compatibility.
+
+One App instance serves one active display profile at a time. Switching between
+the prototype and final panel is supported; serving both resolutions to two
+controllers simultaneously would require per-device profiles and is not part of
+this release.
+
 ## First test
 
 1. Start the App and open its Web UI.
@@ -52,9 +71,11 @@ Endpoints:
 
 RAW data contains two pixels per byte: the first pixel in the high nibble and
 the second in the low nibble. Palette indices are `0 white`, `1 black`, `2 red`,
-`3 yellow`, `4 blue`, `5 green`. The final mapping to the EE02 driver remains a
-firmware concern so it can be changed without touching the album or rendering
-modules.
+`3 yellow`, `4 blue`, `5 green`. The final mapping to the selected controller
+driver remains a firmware concern so it can be changed without touching the
+album or rendering modules. The configuration response also includes
+`display_model`; firmware rejects a profile intended for the other physical
+panel.
 
 ## Controller simulator
 
@@ -73,11 +94,12 @@ Automatic mode advances a virtual clock by the real frame interval while only
 waiting 5, 10, or 30 seconds in the browser. It therefore tests multi-cycle and
 night-window behaviour without waiting several hours.
 
-## EE02 firmware 0.1.0
+## Controller firmware 0.2.0
 
-The repository now contains a first physical controller implementation under
-`firmware/ee02_photo_frame`. It targets the XIAO ePaper Display Board EE02,
-XIAO ESP32-S3 Plus, and the 13.3-inch 1200 x 1600 Spectra 6 T133A01 panel.
+The repository contains matching implementations under
+`firmware/ee02_photo_frame` and `firmware/ee04_photo_frame`. They target the
+13.3-inch/EE02 and 7.3-inch/EE04 combinations respectively, both with a XIAO
+ESP32-S3 Plus.
 
 The controller uses the same API as the simulator. It validates protocol
 version, dimensions, palette, frame headers, RAW length, and every packed
@@ -85,9 +107,9 @@ palette index before calling the physical display update. It automatically
 selects portrait or landscape rotation from the dimensions supplied by the
 App. Server time and the configured night window control timer deep sleep.
 
-The first USB test should be performed with deep sleep disabled. The full
-Arduino preparation, wiring precautions, secrets file and commissioning steps
-are documented in `firmware/ee02_photo_frame/README.md`.
+The first USB test should be performed with deep sleep disabled. Each firmware
+folder documents its Arduino preparation, wiring precautions, secrets file and
+commissioning steps.
 
 ## Operational behaviour
 
