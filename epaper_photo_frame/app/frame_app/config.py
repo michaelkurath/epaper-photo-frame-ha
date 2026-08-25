@@ -6,6 +6,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+DISPLAY_MODEL_13_3 = "spectra_13_3_ee02"
+DISPLAY_MODEL_7_3 = "spectra_7_3_ee04"
+DISPLAY_DIMENSIONS = {
+    DISPLAY_MODEL_13_3: (1200, 1600),
+    DISPLAY_MODEL_7_3: (480, 800),
+}
+
+
 @dataclass(frozen=True, slots=True)
 class Settings:
     album_url: str
@@ -13,6 +21,7 @@ class Settings:
     album_poll_hours: int = 6
     frame_interval_hours: int = 4
     fit_mode: str = "cover"
+    display_model: str = DISPLAY_MODEL_13_3
     orientation: str = "portrait"
     smart_unused_percent: int = 15
     dither: bool = True
@@ -23,7 +32,8 @@ class Settings:
 
     @property
     def dimensions(self) -> tuple[int, int]:
-        return (1200, 1600) if self.orientation == "portrait" else (1600, 1200)
+        portrait = DISPLAY_DIMENSIONS[self.display_model]
+        return portrait if self.orientation == "portrait" else portrait[::-1]
 
     @classmethod
     def load(cls) -> "Settings":
@@ -44,9 +54,14 @@ class Settings:
             raise ValueError("api_token must contain at least 16 characters")
 
         fit_mode = str(option("fit_mode", "cover"))
+        display_model = str(option("display_model", DISPLAY_MODEL_13_3))
         orientation = str(option("orientation", "portrait"))
         if fit_mode not in {"cover", "contain", "smart"}:
             raise ValueError("fit_mode must be cover, contain or smart")
+        if display_model not in DISPLAY_DIMENSIONS:
+            raise ValueError(
+                "display_model must be spectra_13_3_ee02 or spectra_7_3_ee04"
+            )
         if orientation not in {"portrait", "landscape"}:
             raise ValueError("orientation must be portrait or landscape")
         smart_unused_percent = int(option("smart_unused_percent", 15) or 0)
@@ -68,6 +83,7 @@ class Settings:
             album_poll_hours=int(option("album_poll_hours", 6) or 6),
             frame_interval_hours=int(option("frame_interval_hours", 4) or 4),
             fit_mode=fit_mode,
+            display_model=display_model,
             orientation=orientation,
             smart_unused_percent=smart_unused_percent,
             dither=dither,
