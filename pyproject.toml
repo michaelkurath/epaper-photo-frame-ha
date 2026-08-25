@@ -1,10 +1,15 @@
 [build-system]
-requires = ["setuptools>=75"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "epaper-photo-frame-ha"
 version = "0.6.0"
+authors = [
+  { name = "Michael Kurath" },
+]
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = [
   "fastapi~=0.116.0",
