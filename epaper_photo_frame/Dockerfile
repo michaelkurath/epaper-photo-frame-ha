@@ -1,10 +1,10 @@
 FROM ghcr.io/home-assistant/base:3.23
 
-ARG BUILD_VERSION=0.1.0
+ARG BUILD_VERSION=0.3.0
 ARG BUILD_ARCH
 
-RUN apk add --no-cache nginx python3 py3-pip \
-    && python3 -m venv /opt/venv \
+RUN apk add --no-cache nginx python3 py3-pip py3-opencv \
+    && python3 -m venv --system-site-packages /opt/venv \
     && /opt/venv/bin/pip install --no-cache-dir \
         "fastapi~=0.116.0" \
         "Pillow~=11.3.0" \

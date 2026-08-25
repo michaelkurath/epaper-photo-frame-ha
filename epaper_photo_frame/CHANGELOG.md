@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0 - 2026-08-25
+
+- Add local OpenCV face detection and detail-aware Smart Crop.
+- Keep groups of detected faces visible or fall back to the full image.
+- Add persistent per-photo manual focus points through the dashboard.
+- Apply gentle contrast and colour optimisation before six-colour conversion.
+
 ## 0.2.1 - 2026-08-25
 
 - Add an in-dashboard controller simulator for the token-protected device API.
