@@ -27,6 +27,10 @@
     .device h2 { margin-top: 0; font-size: 1.2rem; }
     .result { padding: 12px; border-radius: 8px; background: #101820; color: #a8bac6; white-space: pre-wrap; overflow-wrap: anywhere; }
     #devicePreview { display: none; max-width: 420px; margin-top: 14px; }
+    .focus-wrap { position: relative; }
+    #preview { cursor: crosshair; }
+    #focusMarker { display: none; position: absolute; width: 20px; height: 20px; border: 3px solid #ffcc33; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 0 2px #101820; pointer-events: none; }
+    .compact { padding: 8px 11px; font-size: .85rem; }
     #message { min-height: 1.5em; color: #a8bac6; }
     .error { color: #ff8b8b !important; }
     @media (max-width: 680px) { .preview { grid-template-columns: 1fr; } }
@@ -42,7 +46,11 @@
     <div class="card"><div class="label">Letzte Synchronisierung</div><div class="value" id="lastSync">–</div></div>
   </section>
   <section class="preview">
-    <div class="card"><img id="preview" alt="Sechsfarben-Vorschau"></div>
+    <div class="card">
+      <div class="focus-wrap"><img id="preview" alt="Sechsfarben-Vorschau"><span id="focusMarker"></span></div>
+      <p class="label">Für einen manuellen Fokuspunkt direkt ins Bild klicken.</p>
+      <button id="clearFocus" class="secondary compact">Automatischen Fokus verwenden</button>
+    </div>
     <div class="card">
       <div class="controls">
         <button class="secondary frame" data-action="previous">← Vorheriges</button>
@@ -58,6 +66,7 @@
         </label>
         <label>Bildanpassung
           <select id="fitMode">
+            <option value="smart">Intelligenter Ausschnitt</option>
             <option value="cover">Füllen (Beschnitt)</option>
             <option value="contain">Ganzes Bild</option>
           </select>
@@ -96,6 +105,12 @@
     byId('lastSync').textContent = asDate(data.last_sync);
     byId('orientation').value = data.orientation;
     byId('fitMode').value = data.fit_mode;
+    const marker = byId('focusMarker');
+    if (data.focus_point) {
+      marker.style.left = (data.focus_point[0] * 100) + '%';
+      marker.style.top = (data.focus_point[1] * 100) + '%';
+      marker.style.display = 'block';
+    } else { marker.style.display = 'none'; }
     byId('message').textContent = data.last_error || 'Bereit';
     byId('message').className = data.last_error ? 'error' : '';
     if (data.photo_count) byId('preview').src = api('api/preview.png') + '?t=' + Date.now();
@@ -136,6 +151,28 @@
     } catch (error) {
       byId('message').textContent = error.message; byId('message').className = 'error';
     } finally { button.disabled = false; }
+  });
+  byId('preview').addEventListener('click', async event => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const x = Math.min(1, Math.max(0, (event.clientX - bounds.left) / bounds.width));
+    const y = Math.min(1, Math.max(0, (event.clientY - bounds.top) / bounds.height));
+    byId('message').textContent = 'Manueller Fokus wird berechnet …';
+    try {
+      const response = await fetch(api('api/frame/focus'), {
+        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({x, y})
+      });
+      if (!response.ok) throw new Error('Fokuspunkt konnte nicht gespeichert werden');
+      await refresh();
+    } catch (error) { byId('message').textContent = error.message; byId('message').className = 'error'; }
+  });
+  byId('clearFocus').addEventListener('click', async () => {
+    byId('clearFocus').disabled = true;
+    try {
+      const response = await fetch(api('api/frame/focus'), {method: 'DELETE'});
+      if (!response.ok) throw new Error('Fokuspunkt konnte nicht gelöscht werden');
+      await refresh();
+    } catch (error) { byId('message').textContent = error.message; byId('message').className = 'error'; }
+    finally { byId('clearFocus').disabled = false; }
   });
   const deviceHeaders = () => ({Authorization: 'Bearer ' + byId('deviceToken').value.trim()});
   const setDeviceBusy = busy => document.querySelectorAll('.device-action').forEach(item => item.disabled = busy);
