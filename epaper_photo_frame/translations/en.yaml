@@ -22,7 +22,10 @@ configuration:
     description: Percentage that Smart Crop may leave empty as a border.
   dither:
     name: Dithering
-    description: Use Floyd-Steinberg dithering for the six-colour palette.
+    description: Enable error diffusion for smoother colour transitions.
+  dither_strength:
+    name: Dithering strength
+    description: 50 percent is recommended for photos; 100 percent is full Floyd-Steinberg dithering.
   night_start:
     name: Night pause starts
     description: Local time after which the controller should keep the last image.

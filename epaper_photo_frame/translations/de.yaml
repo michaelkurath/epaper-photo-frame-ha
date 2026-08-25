@@ -22,7 +22,10 @@ configuration:
     description: Prozentwert, der bei intelligentem Ausschnitt als Rand frei bleiben darf.
   dither:
     name: Dithering
-    description: Floyd-Steinberg-Dithering für die Sechsfarben-Palette.
+    description: Aktiviert Fehlerdiffusion für weichere Farbverläufe.
+  dither_strength:
+    name: Dithering-Stärke
+    description: 50 Prozent wird für Fotos empfohlen; 100 Prozent entspricht vollständigem Floyd-Steinberg-Dithering.
   night_start:
     name: Nachtpause beginnt
     description: Lokale Uhrzeit, ab der das letzte Bild stehen bleibt.
