@@ -82,9 +82,10 @@ night-window behaviour without waiting several hours.
 - A failed album refresh preserves the cache and the last rendered frame.
 - The controller, not Home Assistant, owns deep sleep. The App exposes the
   configured frame and night intervals through `/api/device/config`.
-- Smart Crop keeps the full photo when it already fills at least 85% of the
-  display. Otherwise it crops only enough to reach 85% coverage, leaving slim
-  borders rather than always forcing a full-screen zoom.
+- Smart Crop accepts a configurable 0–40% of unused display area. At the 15%
+  default it keeps the full photo when that already fills at least 85% of the
+  display; otherwise it crops only enough to reach 85% coverage. A value of 0%
+  forces a borderless crop, while larger values preserve more of the photo.
 
 ## Privacy and limitations
 

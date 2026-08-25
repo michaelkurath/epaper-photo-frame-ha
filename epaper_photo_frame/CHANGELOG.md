@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.2 - 2026-08-25
+
+- Add a persistent 0–40% setting for unused display area in Smart Crop mode.
+- Expose convenient percentage choices directly in the dashboard.
+- Include the selected percentage in render cache keys so each setting is
+  rendered independently.
+- Keep 15% as the recommended default and allow 0% for a borderless crop.
+
 ## 0.4.1 - 2026-08-25
 
 - Keep the complete photo when Contain already uses at least 85% of the screen.
