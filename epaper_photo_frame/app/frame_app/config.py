@@ -16,6 +16,7 @@ class Settings:
     orientation: str = "portrait"
     smart_unused_percent: int = 15
     dither: bool = True
+    dither_strength: int = 50
     night_start: str = "23:00"
     night_end: str = "07:00"
     data_dir: Path = Path("/data")
@@ -57,6 +58,9 @@ class Settings:
             dither = raw_dither.lower() in {"1", "true", "yes", "on"}
         else:
             dither = bool(raw_dither)
+        dither_strength = int(option("dither_strength", 50) or 0)
+        if not 0 <= dither_strength <= 100:
+            raise ValueError("dither_strength must be between 0 and 100")
 
         return cls(
             album_url=album_url,
@@ -67,6 +71,7 @@ class Settings:
             orientation=orientation,
             smart_unused_percent=smart_unused_percent,
             dither=dither,
+            dither_strength=dither_strength,
             night_start=str(option("night_start", "23:00")),
             night_end=str(option("night_end", "07:00")),
             data_dir=Path(os.getenv("EPAPER_DATA_DIR", "/data")),

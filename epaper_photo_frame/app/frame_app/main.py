@@ -26,6 +26,7 @@ class DisplayOptions(BaseModel):
     orientation: str
     fit_mode: str
     smart_unused_percent: int = Field(default=15, ge=0, le=40)
+    dither_strength: int = Field(default=50, ge=0, le=100)
 
 
 class FocusOptions(BaseModel):
@@ -79,17 +80,37 @@ async def lifespan(app: FastAPI):
         smart_unused_percent = settings.smart_unused_percent
     if not 0 <= smart_unused_percent <= 40:
         smart_unused_percent = settings.smart_unused_percent
+    stored_dither = catalogue.get_state("display_dither")
+    dither = (
+        stored_dither.lower() in {"1", "true", "yes", "on"}
+        if stored_dither is not None
+        else settings.dither
+    )
+    stored_strength = catalogue.get_state("display_dither_strength")
+    try:
+        dither_strength = (
+            int(stored_strength) if stored_strength is not None else settings.dither_strength
+        )
+    except ValueError:
+        dither_strength = settings.dither_strength
+    if not 0 <= dither_strength <= 100:
+        dither_strength = settings.dither_strength
+    if not dither:
+        dither_strength = 0
     settings = replace(
         settings,
         orientation=orientation,
         fit_mode=fit_mode,
         smart_unused_percent=smart_unused_percent,
+        dither=dither,
+        dither_strength=dither_strength,
     )
     source = GooglePhotosPublicAlbum(settings.album_url)
     pipeline = ImagePipeline(
         settings.dimensions,
         fit_mode=settings.fit_mode,
         dither=settings.dither,
+        dither_strength=settings.dither_strength,
         smart_unused_percent=settings.smart_unused_percent,
     )
     service = FrameService(settings, source, catalogue, pipeline)
@@ -105,7 +126,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="ePaper Photo Frame",
-    version="0.4.2",
+    version="0.5.0",
     lifespan=lifespan,
     docs_url=None,
     redoc_url=None,
@@ -188,7 +209,10 @@ async def display_options(
 ) -> dict[str, object]:
     try:
         await current.set_display_options(
-            options.orientation, options.fit_mode, options.smart_unused_percent
+            options.orientation,
+            options.fit_mode,
+            options.smart_unused_percent,
+            options.dither_strength,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

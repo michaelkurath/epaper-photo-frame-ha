@@ -44,7 +44,8 @@ class FrameService:
         render_key = self._cache_key(
             f"{RENDER_CACHE_VERSION}:{photo_id}:{self.settings.orientation}:"
             f"{self.settings.fit_mode}:"
-            f"{self.settings.smart_unused_percent}:{int(self.settings.dither)}:{focus_key}"
+            f"{self.settings.smart_unused_percent}:{int(self.settings.dither)}:"
+            f"{self.settings.dither_strength}:{focus_key}"
         )
         return (
             self.original_dir / f"{key}.image",
@@ -53,7 +54,11 @@ class FrameService:
         )
 
     async def set_display_options(
-        self, orientation: str, fit_mode: str, smart_unused_percent: int
+        self,
+        orientation: str,
+        fit_mode: str,
+        smart_unused_percent: int,
+        dither_strength: int,
     ) -> None:
         if orientation not in {"portrait", "landscape"}:
             raise ValueError("orientation must be portrait or landscape")
@@ -61,17 +66,22 @@ class FrameService:
             raise ValueError("fit_mode must be cover, contain or smart")
         if not 0 <= smart_unused_percent <= 40:
             raise ValueError("smart_unused_percent must be between 0 and 40")
+        if not 0 <= dither_strength <= 100:
+            raise ValueError("dither_strength must be between 0 and 100")
         async with self._frame_lock:
             self.settings = replace(
                 self.settings,
                 orientation=orientation,
                 fit_mode=fit_mode,
                 smart_unused_percent=smart_unused_percent,
+                dither=dither_strength > 0,
+                dither_strength=dither_strength,
             )
             self.pipeline = ImagePipeline(
                 self.settings.dimensions,
                 fit_mode=self.settings.fit_mode,
                 dither=self.settings.dither,
+                dither_strength=self.settings.dither_strength,
                 smart_unused_percent=self.settings.smart_unused_percent,
             )
             self.catalogue.set_state("display_orientation", orientation)
@@ -79,6 +89,8 @@ class FrameService:
             self.catalogue.set_state(
                 "display_smart_unused_percent", str(smart_unused_percent)
             )
+            self.catalogue.set_state("display_dither", str(dither_strength > 0).lower())
+            self.catalogue.set_state("display_dither_strength", str(dither_strength))
 
     async def set_focus(self, x: float, y: float) -> tuple[float, float]:
         if not 0.0 <= x <= 1.0 or not 0.0 <= y <= 1.0:
@@ -150,6 +162,7 @@ class FrameService:
                 self.settings.dimensions,
                 fit_mode=self.settings.fit_mode,
                 dither=self.settings.dither,
+                dither_strength=self.settings.dither_strength,
                 smart_unused_percent=self.settings.smart_unused_percent,
                 focus_point=self.catalogue.get_focus(photo.id),
             )
@@ -215,6 +228,7 @@ class FrameService:
                 "fit_mode": self.settings.fit_mode,
                 "smart_unused_percent": self.settings.smart_unused_percent,
                 "dither": self.settings.dither,
+                "dither_strength": self.settings.dither_strength,
                 "focus_point": (
                     self.catalogue.get_focus(photo_id)
                     if (photo_id := self.catalogue.get_state("current_photo_id"))

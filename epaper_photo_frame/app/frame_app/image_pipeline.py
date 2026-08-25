@@ -24,7 +24,8 @@ SPECTRA6_PALETTE: tuple[tuple[int, int, int], ...] = (
 # Cropping starts only when a contained image would use less than this share of
 # the target display, and then removes only enough material to reach it.
 SMART_DEFAULT_UNUSED_PERCENT = 15
-RENDER_CACHE_VERSION = "smart-minimal-v2"
+DITHER_DEFAULT_STRENGTH = 50
+RENDER_CACHE_VERSION = "quality-v1"
 
 
 class ImagePipeline:
@@ -34,6 +35,7 @@ class ImagePipeline:
         *,
         fit_mode: str = "cover",
         dither: bool = True,
+        dither_strength: int = DITHER_DEFAULT_STRENGTH,
         smart_unused_percent: int = SMART_DEFAULT_UNUSED_PERCENT,
         focus_point: tuple[float, float] | None = None,
         face_detector: FaceDetector | None = None,
@@ -41,6 +43,7 @@ class ImagePipeline:
         self.dimensions = dimensions
         self.fit_mode = fit_mode
         self.dither = dither
+        self.dither_strength = dither_strength
         self.smart_unused_percent = smart_unused_percent
         self.smart_target_coverage = 1.0 - smart_unused_percent / 100
         self.focus_point = focus_point
@@ -49,6 +52,8 @@ class ImagePipeline:
             raise ValueError("fit_mode must be cover, contain or smart")
         if not 0 <= smart_unused_percent <= 40:
             raise ValueError("smart_unused_percent must be between 0 and 40")
+        if not 0 <= dither_strength <= 100:
+            raise ValueError("dither_strength must be between 0 and 100")
         if focus_point and not all(0.0 <= value <= 1.0 for value in focus_point):
             raise ValueError("focus_point coordinates must be between 0 and 1")
 
@@ -181,19 +186,31 @@ class ImagePipeline:
         if self.fit_mode == "smart":
             return self._smart_crop(image)
         if self.fit_mode == "cover":
-            return ImageOps.fit(
-                image,
-                self.dimensions,
-                method=Image.Resampling.LANCZOS,
-                centering=(0.5, 0.5),
+            return self._enhance(
+                ImageOps.fit(
+                    image,
+                    self.dimensions,
+                    method=Image.Resampling.LANCZOS,
+                    centering=(0.5, 0.5),
+                )
             )
-        return self._contain(image)
+        return self._contain(self._enhance(image))
 
     def quantize(self, source: bytes) -> Image.Image:
         with Image.open(BytesIO(source)) as opened:
             fitted = self._fit(opened)
-        dither = Image.Dither.FLOYDSTEINBERG if self.dither else Image.Dither.NONE
-        return fitted.quantize(palette=self._palette_image(), dither=dither)
+        if not self.dither or self.dither_strength == 0:
+            return fitted.quantize(
+                palette=self._palette_image(), dither=Image.Dither.NONE
+            )
+        if self.dither_strength < 100:
+            nearest = fitted.quantize(
+                palette=self._palette_image(), dither=Image.Dither.NONE
+            ).convert("RGB")
+            fitted = Image.blend(nearest, fitted, self.dither_strength / 100)
+        return fitted.quantize(
+            palette=self._palette_image(), dither=Image.Dither.FLOYDSTEINBERG
+        )
 
     def render_png(self, source: bytes, destination: Path) -> None:
         destination.parent.mkdir(parents=True, exist_ok=True)
