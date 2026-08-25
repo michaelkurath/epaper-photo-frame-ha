@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0 - 2026-08-25
+
+- Add selectable 0%, 25%, 50%, 75%, and 100% dithering strengths.
+- Use a softened Floyd-Steinberg source at partial strengths to reduce visible
+  grain while retaining smoother photographic colour transitions.
+- Apply the existing gentle contrast and colour enhancement consistently to
+  Smart Crop, Cover, and Contain modes.
+- Persist the dashboard selection and isolate every quality level in the
+  rendered-frame cache.
+
 ## 0.4.2 - 2026-08-25
 
 - Add a persistent 0–40% setting for unused display area in Smart Crop mode.

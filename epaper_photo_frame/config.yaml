@@ -1,5 +1,5 @@
 name: "ePaper Photo Frame"
-version: "0.4.2"
+version: "0.5.0"
 slug: "epaper_photo_frame"
 description: >-
   Google Photos album, Spectra 6 image processing, and a local device API for
@@ -28,6 +28,7 @@ options:
   orientation: "portrait"
   smart_unused_percent: 15
   dither: true
+  dither_strength: 50
   night_start: "23:00"
   night_end: "07:00"
 schema:
@@ -39,5 +40,6 @@ schema:
   orientation: "list(portrait|landscape)"
   smart_unused_percent: "int(0,40)"
   dither: bool
+  dither_strength: "int(0,100)"
   night_start: "match(^([01]\\d|2[0-3]):[0-5]\\d$)"
   night_end: "match(^([01]\\d|2[0-3]):[0-5]\\d$)"

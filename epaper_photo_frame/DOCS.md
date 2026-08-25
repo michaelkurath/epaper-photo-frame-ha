@@ -86,6 +86,10 @@ night-window behaviour without waiting several hours.
   default it keeps the full photo when that already fills at least 85% of the
   display; otherwise it crops only enough to reach 85% coverage. A value of 0%
   forces a borderless crop, while larger values preserve more of the photo.
+- Dithering strength is configurable from 0–100%. A value of 0% produces calm,
+  hard colour areas; 100% uses full Floyd-Steinberg error diffusion. The 50%
+  default first moves colours closer to the Spectra 6 palette and then applies
+  error diffusion, which usually gives photos and faces a less grainy result.
 
 ## Privacy and limitations
 
