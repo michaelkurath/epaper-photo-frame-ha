@@ -1,6 +1,6 @@
 FROM ghcr.io/home-assistant/base:3.23
 
-ARG BUILD_VERSION=0.5.0
+ARG BUILD_VERSION=0.6.0
 ARG BUILD_ARCH
 
 RUN apk add --no-cache nginx python3 py3-pip py3-opencv \
