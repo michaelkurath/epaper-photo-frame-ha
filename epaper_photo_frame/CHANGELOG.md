@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.0 - 2026-08-25
+
+- Add selectable `spectra_7_3_ee04` and `spectra_13_3_ee02` hardware profiles.
+- Render the 7.3-inch panel at 800 x 480 or 480 x 800 with an exact 192,000-byte
+  packed RAW frame while preserving the 13.3-inch 960,000-byte format.
+- Keep existing installations on the 13.3-inch profile by default.
+- Add an EE04/P073_SP6 firmware variant and validate the server profile before
+  any physical display refresh.
+- Separate rendered-frame caches by display profile and show the active panel
+  and resolution in the dashboard and controller simulator.
+- Update palette/detail iteration to Pillow's current API so the test run is
+  warning-free with the pinned Pillow 11.3 release.
+
 ## 0.5.0 - 2026-08-25
 
 - Add selectable 0%, 25%, 50%, 75%, and 100% dithering strengths.
