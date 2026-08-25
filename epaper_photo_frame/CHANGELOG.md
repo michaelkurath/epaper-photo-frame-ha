@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Identify the copyright holder by full name and declare the MIT license in
+  the Python package metadata.
+- Add security-reporting guidance and explicit local-network limitations.
+- Document bundled, runtime, and firmware third-party components and their
+  upstream licenses.
+- Add weekly automated dependency update checks for Python, Docker, and GitHub
+  Actions dependencies.
+
 ## 0.6.0 - 2026-08-25
 
 - Add selectable `spectra_7_3_ee04` and `spectra_13_3_ee02` hardware profiles.
