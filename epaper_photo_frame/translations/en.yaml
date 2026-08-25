@@ -14,9 +14,12 @@ configuration:
   fit_mode:
     name: Photo fit
     description: Crop to fill or contain the full photo with a border.
+  display_model:
+    name: Display model and controller board
+    description: The 13.3-inch panel requires EE02; the 800 by 480 7.3-inch panel requires EE04. Restart the App after changing it.
   orientation:
     name: Display orientation
-    description: Portrait is 1200 by 1600; landscape is 1600 by 1200.
+    description: Rotate frames for the selected display profile to portrait or landscape.
   smart_unused_percent:
     name: Allowed unused display area
     description: Percentage that Smart Crop may leave empty as a border.
