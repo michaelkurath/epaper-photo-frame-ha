@@ -48,6 +48,7 @@
     <div class="card"><div class="label">Album</div><div class="value" id="album">–</div></div>
     <div class="card"><div class="label">Fotos</div><div class="value" id="photos">–</div></div>
     <div class="card"><div class="label">Neue Fotos</div><div class="value" id="newPhotos">–</div></div>
+    <div class="card"><div class="label">Displayprofil</div><div class="value" id="displayProfile">–</div></div>
     <div class="card"><div class="label">Letzte Synchronisierung</div><div class="value" id="lastSync">–</div></div>
   </section>
   <section class="preview">
@@ -143,6 +144,10 @@
   const byId = id => document.getElementById(id);
   const api = path => new URL(path, window.location.href).toString();
   const asDate = value => value ? new Date(value * 1000).toLocaleString() : '–';
+  const displayName = model => ({
+    spectra_13_3_ee02: '13,3″ · EE02',
+    spectra_7_3_ee04: '7,3″ · EE04'
+  })[model] || model || '–';
   async function responseError(response, fallback) {
     const body = await response.text().catch(() => '');
     if (body) {
@@ -160,6 +165,7 @@
     byId('album').textContent = data.album_title || '–';
     byId('photos').textContent = data.photo_count;
     byId('newPhotos').textContent = data.new_photo_count;
+    byId('displayProfile').textContent = `${displayName(data.display_model)} · ${data.width} × ${data.height}`;
     byId('lastSync').textContent = asDate(data.last_sync);
     byId('orientation').value = data.orientation;
     byId('fitMode').value = data.fit_mode;
@@ -290,7 +296,7 @@
   async function reportDevice(status, fields = {}) {
     const response = await fetch(api('api/device/report'), {
       method: 'POST', headers: deviceHeaders(true), body: JSON.stringify({
-        device_id: 'browser-simulator', firmware_version: 'web-simulator-0.5.0',
+        device_id: 'browser-simulator', firmware_version: 'web-simulator-0.6.0',
         status, battery_percent: 100, wifi_rssi: -55, ...fields
       })
     });
@@ -392,7 +398,7 @@
     setDeviceBusy(true);
     try {
       const config = await loadDeviceConfig();
-      byId('deviceResult').textContent = `Verbindung erfolgreich\nProtokoll: ${config.protocol_version}\nAuflösung: ${config.width} × ${config.height}\nRAW-Grösse: ${config.raw_size_bytes.toLocaleString()} Bytes\nNachtpause: ${config.night_start}–${config.night_end}`;
+      byId('deviceResult').textContent = `Verbindung erfolgreich\nProfil: ${displayName(config.display_model)}\nProtokoll: ${config.protocol_version}\nAuflösung: ${config.width} × ${config.height}\nRAW-Grösse: ${config.raw_size_bytes.toLocaleString()} Bytes\nNachtpause: ${config.night_start}–${config.night_end}`;
       setSimState('Verbunden'); simLog('Gerätekonfiguration erfolgreich geprüft.');
     } catch (error) { byId('deviceResult').textContent = error.message; setSimState('Fehler'); }
     finally { setDeviceBusy(false); }
