@@ -43,8 +43,8 @@ class Settings:
 
         fit_mode = str(option("fit_mode", "cover"))
         orientation = str(option("orientation", "portrait"))
-        if fit_mode not in {"cover", "contain"}:
-            raise ValueError("fit_mode must be cover or contain")
+        if fit_mode not in {"cover", "contain", "smart"}:
+            raise ValueError("fit_mode must be cover, contain or smart")
         if orientation not in {"portrait", "landscape"}:
             raise ValueError("orientation must be portrait or landscape")
 
@@ -66,4 +66,3 @@ class Settings:
             night_end=str(option("night_end", "07:00")),
             data_dir=Path(os.getenv("EPAPER_DATA_DIR", "/data")),
         )
-

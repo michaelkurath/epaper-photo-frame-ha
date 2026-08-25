@@ -25,6 +25,11 @@ class DisplayOptions(BaseModel):
     fit_mode: str
 
 
+class FocusOptions(BaseModel):
+    x: float
+    y: float
+
+
 def _service() -> FrameService:
     if service is None:
         raise HTTPException(status_code=503, detail="Service is starting")
@@ -71,7 +76,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="ePaper Photo Frame",
-    version="0.2.1",
+    version="0.3.0",
     lifespan=lifespan,
     docs_url=None,
     redoc_url=None,
@@ -149,6 +154,28 @@ async def display_options(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return current.status()
+
+
+@app.post("/api/frame/focus")
+async def set_frame_focus(
+    options: FocusOptions, current: FrameService = Depends(_service)
+) -> dict[str, object]:
+    try:
+        focus = await current.set_focus(options.x, options.y)
+    except (LookupError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"focus_point": focus}
+
+
+@app.delete("/api/frame/focus")
+async def clear_frame_focus(
+    current: FrameService = Depends(_service),
+) -> dict[str, object]:
+    try:
+        await current.clear_focus()
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"focus_point": None}
 
 
 @app.get("/api/device/config")

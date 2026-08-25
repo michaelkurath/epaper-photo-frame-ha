@@ -96,6 +96,23 @@ class Catalogue:
             row = db.execute("SELECT value FROM state WHERE key = ?", (key,)).fetchone()
         return str(row["value"]) if row else None
 
+    def set_focus(self, photo_id: str, x: float, y: float) -> None:
+        self.set_state(f"focus:{photo_id}", f"{x:.6f},{y:.6f}")
+
+    def clear_focus(self, photo_id: str) -> None:
+        with self._connect() as db:
+            db.execute("DELETE FROM state WHERE key = ?", (f"focus:{photo_id}",))
+
+    def get_focus(self, photo_id: str) -> tuple[float, float] | None:
+        value = self.get_state(f"focus:{photo_id}")
+        if not value:
+            return None
+        try:
+            x, y = (float(part) for part in value.split(",", 1))
+        except (TypeError, ValueError):
+            return None
+        return (x, y) if 0.0 <= x <= 1.0 and 0.0 <= y <= 1.0 else None
+
     @staticmethod
     def _stored(row: sqlite3.Row) -> StoredPhoto:
         return StoredPhoto(

@@ -39,9 +39,11 @@ class FrameService:
 
     def _paths(self, photo_id: str) -> tuple[Path, Path, Path]:
         key = self._cache_key(photo_id)
+        focus = self.catalogue.get_focus(photo_id)
+        focus_key = "auto" if focus is None else f"{focus[0]:.6f},{focus[1]:.6f}"
         render_key = self._cache_key(
             f"{photo_id}:{self.settings.orientation}:{self.settings.fit_mode}:"
-            f"{int(self.settings.dither)}"
+            f"{int(self.settings.dither)}:{focus_key}"
         )
         return (
             self.original_dir / f"{key}.image",
@@ -52,8 +54,8 @@ class FrameService:
     async def set_display_options(self, orientation: str, fit_mode: str) -> None:
         if orientation not in {"portrait", "landscape"}:
             raise ValueError("orientation must be portrait or landscape")
-        if fit_mode not in {"cover", "contain"}:
-            raise ValueError("fit_mode must be cover or contain")
+        if fit_mode not in {"cover", "contain", "smart"}:
+            raise ValueError("fit_mode must be cover, contain or smart")
         async with self._frame_lock:
             self.settings = replace(
                 self.settings, orientation=orientation, fit_mode=fit_mode
@@ -65,6 +67,28 @@ class FrameService:
             )
             self.catalogue.set_state("display_orientation", orientation)
             self.catalogue.set_state("display_fit_mode", fit_mode)
+
+    async def set_focus(self, x: float, y: float) -> tuple[float, float]:
+        if not 0.0 <= x <= 1.0 or not 0.0 <= y <= 1.0:
+            raise ValueError("focus coordinates must be between 0 and 1")
+        async with self._frame_lock:
+            photo = await self._current_photo()
+            self.catalogue.set_focus(photo.id, x, y)
+            return (x, y)
+
+    async def clear_focus(self) -> None:
+        async with self._frame_lock:
+            photo = await self._current_photo()
+            self.catalogue.clear_focus(photo.id)
+
+    async def _current_photo(self) -> StoredPhoto:
+        photo_id = self.catalogue.get_state("current_photo_id")
+        photo = self.catalogue.get_photo(photo_id) if photo_id else None
+        if photo is None:
+            photo = self.catalogue.preview_photo()
+        if photo is None:
+            raise LookupError("No cached photo is available")
+        return photo
 
     @staticmethod
     def _download_url(source_url: str) -> str:
@@ -110,7 +134,13 @@ class FrameService:
         if not original.exists():
             await self._download(photo, original)
         if not png.exists():
-            await asyncio.to_thread(self.pipeline.render_png, original.read_bytes(), png)
+            pipeline = ImagePipeline(
+                self.settings.dimensions,
+                fit_mode=self.settings.fit_mode,
+                dither=self.settings.dither,
+                focus_point=self.catalogue.get_focus(photo.id),
+            )
+            await asyncio.to_thread(pipeline.render_png, original.read_bytes(), png)
         if not raw.exists():
             await asyncio.to_thread(self.pipeline.png_to_raw, png, raw)
         return png, raw
@@ -158,12 +188,7 @@ class FrameService:
 
     async def current_frame(self) -> tuple[StoredPhoto, Path, Path]:
         async with self._frame_lock:
-            photo_id = self.catalogue.get_state("current_photo_id")
-            photo = self.catalogue.get_photo(photo_id) if photo_id else None
-            if photo is None:
-                photo = self.catalogue.preview_photo()
-            if photo is None:
-                raise LookupError("No cached photo is available")
+            photo = await self._current_photo()
             png, raw = await self._ensure_render(photo)
             return photo, png, raw
 
@@ -176,6 +201,11 @@ class FrameService:
                 "height": self.settings.dimensions[1],
                 "fit_mode": self.settings.fit_mode,
                 "dither": self.settings.dither,
+                "focus_point": (
+                    self.catalogue.get_focus(photo_id)
+                    if (photo_id := self.catalogue.get_state("current_photo_id"))
+                    else None
+                ),
             }
         )
         return status

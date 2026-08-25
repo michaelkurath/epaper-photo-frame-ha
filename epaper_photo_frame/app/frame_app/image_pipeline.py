@@ -2,8 +2,13 @@ from __future__ import annotations
 
 from io import BytesIO
 from pathlib import Path
+from typing import Callable
 
-from PIL import Image, ImageOps
+from PIL import Image, ImageEnhance, ImageFilter, ImageOps
+
+
+FaceBox = tuple[float, float, float, float]
+FaceDetector = Callable[[Image.Image], list[FaceBox]]
 
 
 SPECTRA6_PALETTE: tuple[tuple[int, int, int], ...] = (
@@ -23,12 +28,18 @@ class ImagePipeline:
         *,
         fit_mode: str = "cover",
         dither: bool = True,
+        focus_point: tuple[float, float] | None = None,
+        face_detector: FaceDetector | None = None,
     ) -> None:
         self.dimensions = dimensions
         self.fit_mode = fit_mode
         self.dither = dither
-        if fit_mode not in {"cover", "contain"}:
-            raise ValueError("fit_mode must be cover or contain")
+        self.focus_point = focus_point
+        self.face_detector = face_detector or self._detect_faces_opencv
+        if fit_mode not in {"cover", "contain", "smart"}:
+            raise ValueError("fit_mode must be cover, contain or smart")
+        if focus_point and not all(0.0 <= value <= 1.0 for value in focus_point):
+            raise ValueError("focus_point coordinates must be between 0 and 1")
 
     @staticmethod
     def _palette_image() -> Image.Image:
@@ -37,15 +48,82 @@ class ImagePipeline:
         palette.putpalette(flat + [0] * (768 - len(flat)))
         return palette
 
-    def _fit(self, image: Image.Image) -> Image.Image:
-        image = ImageOps.exif_transpose(image).convert("RGB")
-        if self.fit_mode == "cover":
-            return ImageOps.fit(
-                image,
-                self.dimensions,
-                method=Image.Resampling.LANCZOS,
-                centering=(0.5, 0.5),
-            )
+    @staticmethod
+    def _detect_faces_opencv(image: Image.Image) -> list[FaceBox]:
+        try:
+            import cv2
+            import numpy as np
+        except ImportError:
+            return []
+        cascade_path = getattr(cv2.data, "haarcascades", "") + "haarcascade_frontalface_default.xml"
+        classifier = cv2.CascadeClassifier(cascade_path)
+        if classifier.empty():
+            return []
+        scale = min(1.0, 900 / max(image.size))
+        sample = image.resize(
+            (max(1, round(image.width * scale)), max(1, round(image.height * scale))),
+            Image.Resampling.LANCZOS,
+        )
+        gray = cv2.cvtColor(np.asarray(sample), cv2.COLOR_RGB2GRAY)
+        detected = classifier.detectMultiScale(
+            gray, scaleFactor=1.1, minNeighbors=5, minSize=(28, 28)
+        )
+        return [
+            (x / sample.width, y / sample.height, (x + w) / sample.width, (y + h) / sample.height)
+            for x, y, w, h in detected
+        ]
+
+    @staticmethod
+    def _detail_focus(image: Image.Image) -> tuple[float, float]:
+        sample = ImageOps.grayscale(image).resize((64, 64), Image.Resampling.LANCZOS)
+        edges = sample.filter(ImageFilter.FIND_EDGES)
+        values = list(edges.getdata())
+        total = sum(values)
+        if total <= 0:
+            return (0.5, 0.5)
+        x = sum((index % 64 + 0.5) * value for index, value in enumerate(values)) / total
+        y = sum((index // 64 + 0.5) * value for index, value in enumerate(values)) / total
+        return (x / 64, y / 64)
+
+    def _smart_crop(self, image: Image.Image) -> Image.Image:
+        target_ratio = self.dimensions[0] / self.dimensions[1]
+        source_ratio = image.width / image.height
+        if source_ratio >= target_ratio:
+            crop_height = image.height
+            crop_width = crop_height * target_ratio
+        else:
+            crop_width = image.width
+            crop_height = crop_width / target_ratio
+
+        faces = self.face_detector(image)
+        use_contain = False
+        if self.focus_point:
+            focus_x, focus_y = self.focus_point
+        elif faces:
+            left = max(0.0, min(box[0] for box in faces) - 0.08)
+            top = max(0.0, min(box[1] for box in faces) - 0.12)
+            right = min(1.0, max(box[2] for box in faces) + 0.08)
+            bottom = min(1.0, max(box[3] for box in faces) + 0.16)
+            focus_x, focus_y = ((left + right) / 2, (top + bottom) / 2)
+            required_width = (right - left) * image.width
+            required_height = (bottom - top) * image.height
+            use_contain = required_width > crop_width or required_height > crop_height
+        else:
+            focus_x, focus_y = self._detail_focus(image)
+
+        if use_contain:
+            return self._contain(image)
+        left_px = min(max(focus_x * image.width - crop_width / 2, 0), image.width - crop_width)
+        top_px = min(max(focus_y * image.height - crop_height / 2, 0), image.height - crop_height)
+        cropped = image.crop(
+            (round(left_px), round(top_px), round(left_px + crop_width), round(top_px + crop_height))
+        )
+        fitted = cropped.resize(self.dimensions, Image.Resampling.LANCZOS)
+        fitted = ImageOps.autocontrast(fitted, cutoff=1)
+        fitted = ImageEnhance.Contrast(fitted).enhance(1.06)
+        return ImageEnhance.Color(fitted).enhance(1.04)
+
+    def _contain(self, image: Image.Image) -> Image.Image:
         contained = ImageOps.contain(
             image, self.dimensions, method=Image.Resampling.LANCZOS
         )
@@ -56,6 +134,19 @@ class ImagePipeline:
         )
         canvas.paste(contained, position)
         return canvas
+
+    def _fit(self, image: Image.Image) -> Image.Image:
+        image = ImageOps.exif_transpose(image).convert("RGB")
+        if self.fit_mode == "smart":
+            return self._smart_crop(image)
+        if self.fit_mode == "cover":
+            return ImageOps.fit(
+                image,
+                self.dimensions,
+                method=Image.Resampling.LANCZOS,
+                centering=(0.5, 0.5),
+            )
+        return self._contain(image)
 
     def quantize(self, source: bytes) -> Image.Image:
         with Image.open(BytesIO(source)) as opened:
@@ -84,4 +175,3 @@ class ImagePipeline:
         temporary = destination.with_suffix(destination.suffix + ".tmp")
         temporary.write_bytes(packed)
         temporary.replace(destination)
-
