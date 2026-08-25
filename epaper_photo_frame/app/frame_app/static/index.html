@@ -95,6 +95,16 @@
   const byId = id => document.getElementById(id);
   const api = path => new URL(path, window.location.href).toString();
   const asDate = value => value ? new Date(value * 1000).toLocaleString() : '–';
+  async function responseError(response, fallback) {
+    const body = await response.text().catch(() => '');
+    if (body) {
+      try {
+        const data = JSON.parse(body);
+        if (data.detail) return data.detail;
+      } catch (_) { /* Plain-text server errors are handled below. */ }
+    }
+    return `${fallback} (HTTP ${response.status})`;
+  }
   async function refresh() {
     const response = await fetch(api('api/status'));
     if (!response.ok) throw new Error('Status nicht verfügbar');
@@ -131,7 +141,7 @@
     byId('message').textContent = 'Foto wird vorbereitet …';
     try {
       const response = await fetch(api('api/frame/' + button.dataset.action), {method: 'POST'});
-      if (!response.ok) throw new Error((await response.json()).detail || 'Foto konnte nicht geladen werden');
+      if (!response.ok) throw new Error(await responseError(response, 'Foto konnte nicht geladen werden'));
       await refresh();
     } catch (error) {
       byId('message').textContent = error.message; byId('message').className = 'error';
