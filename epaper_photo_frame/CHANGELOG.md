@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1 - 2026-08-25
+
+- Bundle the OpenCV Haar cascade because Alpine's `py3-opencv` package does not
+  include the `cv2.data` cascade directory.
+- Fall back to detail-aware Smart Crop if face detection is unavailable.
+- Return and display useful JSON errors instead of a browser JSON parse error.
+
 ## 0.3.0 - 2026-08-25
 
 - Add local OpenCV face detection and detail-aware Smart Crop.
