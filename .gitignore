@@ -6,5 +6,6 @@ __pycache__/
 .DS_Store
 dist/
 firmware/ee02_photo_frame/secrets.h
+firmware/ee04_photo_frame/secrets.h
 .pio/
 *.egg-info/
