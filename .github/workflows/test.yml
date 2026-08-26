@@ -2,6 +2,8 @@ name: Test
 
 on:
   push:
+    branches:
+      - main
   pull_request:
 
 permissions:
@@ -12,10 +14,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e .
-      - run: PYTHONPATH=epaper_photo_frame/app python -m unittest discover -s tests -v
+      - run: bash scripts/check.sh
+      - run: bash scripts/check-container.sh
