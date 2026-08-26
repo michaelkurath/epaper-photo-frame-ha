@@ -19,6 +19,45 @@ class RepositoryComplianceTests(unittest.TestCase):
         self.assertEqual(metadata["project"]["license"], "MIT")
         self.assertEqual(metadata["project"]["authors"], [{"name": "Michael Kurath"}])
 
+    def test_runtime_dependencies_have_one_shared_definition(self) -> None:
+        with (ROOT / "pyproject.toml").open("rb") as handle:
+            metadata = tomllib.load(handle)
+        requirements = [
+            line.strip()
+            for line in (ROOT / "epaper_photo_frame" / "requirements.txt")
+            .read_text(encoding="utf-8")
+            .splitlines()
+            if line.strip() and not line.startswith("#")
+        ]
+        self.assertEqual(metadata["project"]["dependencies"], requirements)
+
+        dockerfile = (ROOT / "epaper_photo_frame" / "Dockerfile").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("-r /tmp/requirements.txt", dockerfile)
+        for package in ("fastapi~=", "Pillow~=", "uvicorn~="):
+            self.assertNotIn(package, dockerfile)
+
+    def test_release_versions_stay_in_sync(self) -> None:
+        with (ROOT / "pyproject.toml").open("rb") as handle:
+            package_version = tomllib.load(handle)["project"]["version"]
+        config = (ROOT / "epaper_photo_frame" / "config.yaml").read_text(
+            encoding="utf-8"
+        )
+        dockerfile = (ROOT / "epaper_photo_frame" / "Dockerfile").read_text(
+            encoding="utf-8"
+        )
+        package_init = (
+            ROOT / "epaper_photo_frame" / "app" / "frame_app" / "__init__.py"
+        ).read_text(encoding="utf-8")
+        main = (
+            ROOT / "epaper_photo_frame" / "app" / "frame_app" / "main.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn(f'version: "{package_version}"', config)
+        self.assertIn(f"ARG BUILD_VERSION={package_version}", dockerfile)
+        self.assertIn(f'__version__ = "{package_version}"', package_init)
+        self.assertIn(f'version="{package_version}"', main)
+
     def test_security_policy_documents_network_boundary(self) -> None:
         policy = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
         self.assertIn("do not expose port `8080` to the internet", policy)
