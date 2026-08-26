@@ -8,6 +8,10 @@ updates:
       time: "06:00"
       timezone: "Europe/Zurich"
     open-pull-requests-limit: 5
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: docker
     directory: "/epaper_photo_frame"
@@ -17,6 +21,10 @@ updates:
       time: "06:15"
       timezone: "Europe/Zurich"
     open-pull-requests-limit: 3
+    groups:
+      github-actions:
+        patterns:
+          - "*"
 
   - package-ecosystem: github-actions
     directory: "/"
