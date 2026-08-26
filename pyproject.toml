@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "epaper-photo-frame-ha"
-version = "0.6.0"
+version = "0.6.1"
 authors = [
   { name = "Michael Kurath" },
 ]
@@ -12,9 +12,9 @@ license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = [
-  "fastapi~=0.116.0",
-  "Pillow~=11.3.0",
-  "uvicorn~=0.35.0",
+  "fastapi~=0.141.1",
+  "Pillow~=12.3.0",
+  "uvicorn~=0.52.4",
 ]
 
 [tool.setuptools]
