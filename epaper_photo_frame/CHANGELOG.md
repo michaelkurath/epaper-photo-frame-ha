@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.6.1 - 2026-08-26
+
 - Identify the copyright holder by full name and declare the MIT license in
   the Python package metadata.
 - Add security-reporting guidance and explicit local-network limitations.
@@ -9,6 +11,14 @@
   upstream licenses.
 - Add weekly automated dependency update checks for Python, Docker, and GitHub
   Actions dependencies.
+- Update the Home Assistant base image to 3.24 and refresh the Python and
+  GitHub Actions dependencies.
+- Install container dependencies from the shared requirements file instead of
+  duplicating version pins in the Dockerfile.
+- Build and start the complete Home Assistant container in CI and verify its
+  public health endpoint.
+- Group future Python and GitHub Actions dependency updates into fewer pull
+  requests.
 
 ## 0.6.0 - 2026-08-25
 

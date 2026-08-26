@@ -1,14 +1,14 @@
-FROM ghcr.io/home-assistant/base:3.23
+FROM ghcr.io/home-assistant/base:3.24
 
-ARG BUILD_VERSION=0.6.0
+ARG BUILD_VERSION=0.6.1
 ARG BUILD_ARCH
+
+COPY requirements.txt /tmp/requirements.txt
 
 RUN apk add --no-cache nginx python3 py3-pip py3-opencv \
     && python3 -m venv --system-site-packages /opt/venv \
-    && /opt/venv/bin/pip install --no-cache-dir \
-        "fastapi~=0.116.0" \
-        "Pillow~=11.3.0" \
-        "uvicorn~=0.35.0"
+    && /opt/venv/bin/pip install --no-cache-dir -r /tmp/requirements.txt \
+    && rm /tmp/requirements.txt
 
 COPY app /opt/epaper-photo-frame
 COPY rootfs /

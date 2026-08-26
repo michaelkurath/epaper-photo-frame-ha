@@ -1,3 +1,3 @@
-fastapi~=0.116.0
-Pillow~=11.3.0
-uvicorn~=0.35.0
+fastapi~=0.141.1
+Pillow~=12.3.0
+uvicorn~=0.52.4
