@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=84.0.0"]
+requires = ["setuptools>=84.2.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -12,9 +12,9 @@ license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = [
-  "fastapi~=0.141.1",
-  "Pillow~=12.3.0",
-  "uvicorn~=0.52.4",
+  "fastapi~=0.161.1",
+  "Pillow~=13.0.0",
+  "uvicorn~=0.54.0",
 ]
 
 [tool.setuptools]
